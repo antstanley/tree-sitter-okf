@@ -12,5 +12,9 @@ cd "$(dirname "$0")/.."
 
 npx changeset version
 version=$(node -p "require('./package.json').version")
+# `tree-sitter version` updates Cargo.lock with an offline cargo, which
+# needs the dependencies in the local registry cache (a fresh CI runner has
+# none)
+if command -v cargo >/dev/null 2>&1; then cargo fetch --quiet; fi
 npx tree-sitter version "$version"
 echo "versioned packages at $version"
