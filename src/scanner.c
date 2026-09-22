@@ -329,9 +329,15 @@ static unsigned serialize(Scanner *s, char *buffer) {
     buffer[size++] = (char)s->state;
     buffer[size++] = (char)s->matched;
     buffer[size++] = (char)s->indentation;
-    buffer[size++] = (char)s->column;
+    buffer[size++] = 0; // was the column; see `advance`
     buffer[size++] = (char)s->fenced_code_block_delimiter_length;
-    buffer[size++] = (char)s->inline_state;
+    // OKF: serialized states must be canonical, or parse versions that reach
+    // the same place never merge (tree-sitter compares these bytes), which
+    // costs time and makes every node built meanwhile unreusable.  The
+    // open/close bit of a delimiter run means nothing once the run is over.
+    buffer[size++] = (char)(s->num_emphasis_delimiters_left
+                                ? s->inline_state
+                                : (s->inline_state & ~STATE_EMPHASIS_DELIMITER_IS_OPEN));
     buffer[size++] = (char)s->code_span_delimiter_length;
     buffer[size++] = (char)s->num_emphasis_delimiters_left;
     buffer[size++] = (char)s->prev_class;
@@ -508,16 +514,17 @@ static bool error(TSLexer *lexer) {
     return true;
 }
 
-// Advance the lexer one character, keeping track of the current column so
-// tabs count as spaces with tab stop 4 (https://github.github.com/gfm/#tabs).
+// Advance the lexer one character.  Tabs count as spaces with tab stop 4
+// (https://github.github.com/gfm/#tabs).  OKF: upstream tracked the column
+// itself; merged with the inline layer, whose text the internal lexer reads,
+// that count drifts and differs between parse versions, which then cannot
+// merge.  The real column is asked for when a tab is actually met.
 static size_t advance(Scanner *s, TSLexer *lexer) {
     size_t size = 1;
     if (lexer->lookahead == '\t') {
-        size = 4 - s->column;
-        s->column = 0;
-    } else {
-        s->column = (s->column + 1) % 4;
+        size = 4 - lexer->get_column(lexer) % 4;
     }
+    s->column = 0;
     lexer->advance(lexer, false);
     return size;
 }
@@ -2510,6 +2517,11 @@ static bool md_scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
             // reset some state variables
             s->state &= (~STATE_WAS_SOFT_LINE_BREAK);
             s->state &= (~STATE_SINGLE_LINE);
+            // OKF: a hard line ending ends any inline content, so inline
+            // state is reset (canonical states merge, see `serialize`).
+            s->inline_state = 0;
+            s->code_span_delimiter_length = 0;
+            s->num_emphasis_delimiters_left = 0;
             lexer->result_symbol = LINE_ENDING;
             return true;
         }
@@ -3601,6 +3613,29 @@ bool tree_sitter_okf_external_scanner_scan(void *payload, TSLexer *lexer,
         // can precede an emphasis delimiter run say what they were.
         scanner->prev_class = scanner->pending_class;
         scanner->prev_column = scanner->pending_column;
+        // Keep the state canonical, so parse versions that reach the same
+        // place with the same meaning also have the same bytes and merge (see
+        // `serialize`): a delimiter run is over once any other token is
+        // emitted, and block indentation means nothing after inline content.
+        TSSymbol symbol = lexer->result_symbol;
+        bool delimiter = symbol == EMPHASIS_OPEN_STAR || symbol == EMPHASIS_CLOSE_STAR ||
+                         symbol == EMPHASIS_OPEN_UNDERSCORE ||
+                         symbol == EMPHASIS_CLOSE_UNDERSCORE ||
+                         symbol == STRIKETHROUGH_OPEN || symbol == STRIKETHROUGH_CLOSE;
+        if (!delimiter) {
+            scanner->num_emphasis_delimiters_left = 0;
+            scanner->inline_state &= ~STATE_EMPHASIS_DELIMITER_IS_OPEN;
+        }
+        bool inline_token = delimiter || symbol == CODE_SPAN_START || symbol == CODE_SPAN_CLOSE ||
+                            symbol == UNCLOSED_SPAN || symbol == FOOTNOTE_REFERENCE_START ||
+                            symbol == FOOTNOTE_LABEL || symbol == FOOTNOTE_REFERENCE_END ||
+                            symbol == LITERAL_OPEN_BRACKET || symbol == WHITESPACE_GE_2 ||
+                            symbol == WHITESPACE_1 || symbol == PIPE_TABLE_PIPE ||
+                            symbol == PIPE_TABLE_CELL_LEADING_SPACE ||
+                            symbol == PIPE_TABLE_CELL_TRAILING_SPACE ||
+                            symbol == PIPE_TABLE_EMPTY_CELL ||
+                            (symbol >= PUNCTUATION_FIRST && symbol <= PUNCTUATION_LAST);
+        if (inline_token && !scanner->fm_active) scanner->indentation = 0;
     }
     return found;
 }

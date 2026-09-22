@@ -1,0 +1,222 @@
+#!/usr/bin/env python3
+"""Performance benchmark (spec §9.5).
+
+Reports, for the current build:
+
+  bundles     every document in test/fixtures/bundles: files/s and MB/s
+  large       a synthetic ~100 KB OKF document: median and p99 parse time
+  scaling     parse time of 2x and 4x that document relative to 1x (linear
+              is 2.0 and 4.0; spec §9.3 "linear time")
+  incremental a one-character edit in the 100 KB document: median and p99
+              re-parse time
+  corpus_incremental
+              one-character edits at five places in every fixture document:
+              median and worst re-parse time (spec §9.5 target: < 1 ms on
+              the corpus)
+
+Results are compared with bench/baseline.json; a metric more than
+--tolerance times worse than its baseline fails.  `--update` rewrites the
+baseline (commit it with the change that moved it).
+
+Usage: script/bench [--update] [--tolerance 2.0] [--runs 30]
+"""
+
+import argparse
+import json
+import os
+import platform
+import statistics
+import sys
+import time
+
+import tree_sitter
+import tree_sitter_okf
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASELINE = os.path.join(ROOT, "bench", "baseline.json")
+
+
+def fixtures():
+    out = []
+    base = os.path.join(ROOT, "test", "fixtures", "bundles")
+    for dirpath, _, names in os.walk(base):
+        for name in sorted(names):
+            if name.endswith(".md") and name != "LICENSE.md":
+                out.append(open(os.path.join(dirpath, name), "rb").read())
+    return out
+
+
+def synthetic(target_bytes):
+    """A realistic OKF concept: rich frontmatter, then sections with tables,
+    code, lists, links and footnotes, repeated to the target size."""
+    head = open(os.path.join(ROOT, "test", "fixtures", "bundles", "acme_retail", "metrics",
+                             "gross-margin.md"), "rb").read()
+    table = os.path.join(ROOT, "test", "fixtures", "bundles", "ga4", "tables", "events_.md")
+    body = open(table, "rb").read().split(b"\n---\n", 1)[1]
+    doc = head
+    while len(doc) < target_bytes:
+        doc += b"\n" + body
+    return doc
+
+
+def timed(fn, runs):
+    samples = []
+    for _ in range(runs):
+        t = time.perf_counter()
+        fn()
+        samples.append(time.perf_counter() - t)
+    samples.sort()
+    return {
+        "median_ms": statistics.median(samples) * 1000,
+        "p99_ms": samples[min(len(samples) - 1, int(len(samples) * 0.99))] * 1000,
+    }
+
+
+def point_at(source, byte):
+    before = source[:byte]
+    return (before.count(b"\n"), byte - (before.rfind(b"\n") + 1))
+
+
+def run(runs):
+    parser = tree_sitter.Parser(tree_sitter.Language(tree_sitter_okf.language()))
+    results = {}
+
+    docs = fixtures()
+    total = sum(len(d) for d in docs)
+    for d in docs:  # warm up
+        parser.parse(d)
+    t = time.perf_counter()
+    rounds = 5
+    for _ in range(rounds):
+        for d in docs:
+            parser.parse(d)
+    elapsed = time.perf_counter() - t
+    results["bundles"] = {
+        "files": len(docs),
+        "bytes": total,
+        "files_per_s": len(docs) * rounds / elapsed,
+        "mb_per_s": total * rounds / elapsed / 1e6,
+    }
+
+    large = synthetic(100_000)
+    parser.parse(large)
+    results["large"] = dict(bytes=len(large), **timed(lambda: parser.parse(large), runs))
+
+    two = synthetic(200_000)
+    four = synthetic(400_000)
+    one_t = results["large"]["median_ms"]
+    two_t = timed(lambda: parser.parse(two), max(5, runs // 3))["median_ms"]
+    four_t = timed(lambda: parser.parse(four), max(5, runs // 3))["median_ms"]
+    results["scaling"] = {"x2": two_t / one_t, "x4": four_t / one_t}
+
+    # one-character edits spread through the document
+    tree = parser.parse(large)
+    positions = [int(len(large) * f) for f in (0.1, 0.3, 0.5, 0.7, 0.9)]
+    samples = []
+    for i in range(runs):
+        pos = positions[i % len(positions)]
+        # insert then remove a letter, so the document stays the same
+        for new in (large[:pos] + b"x" + large[pos:], large):
+            old = tree
+            if len(new) > len(large):
+                old.edit(start_byte=pos, old_end_byte=pos, new_end_byte=pos + 1,
+                         start_point=point_at(large, pos), old_end_point=point_at(large, pos),
+                         new_end_point=point_at(new, pos + 1))
+            else:
+                grown = large[:pos] + b"x" + large[pos:]
+                old.edit(start_byte=pos, old_end_byte=pos + 1, new_end_byte=pos,
+                         start_point=point_at(grown, pos), old_end_point=point_at(grown, pos + 1),
+                         new_end_point=point_at(new, pos))
+            t = time.perf_counter()
+            tree = parser.parse(new, old)
+            samples.append(time.perf_counter() - t)
+    samples.sort()
+    results["incremental"] = {
+        "median_ms": statistics.median(samples) * 1000,
+        "p99_ms": samples[min(len(samples) - 1, int(len(samples) * 0.99))] * 1000,
+    }
+
+    per_file = []
+    for d in docs:
+        for f in (0.1, 0.3, 0.5, 0.7, 0.9):
+            pos = int(len(d) * f)
+            nl = d.find(b"\n", pos)
+            pos = nl if nl >= 0 else pos
+            new = d[:pos] + b"x" + d[pos:]
+            times = []
+            for _ in range(5):
+                old = parser.parse(d)
+                old.edit(start_byte=pos, old_end_byte=pos, new_end_byte=pos + 1,
+                         start_point=point_at(d, pos), old_end_point=point_at(d, pos),
+                         new_end_point=point_at(new, pos + 1))
+                t = time.perf_counter()
+                parser.parse(new, old)
+                times.append(time.perf_counter() - t)
+            per_file.append(statistics.median(times))
+    results["corpus_incremental"] = {
+        "median_ms": statistics.median(per_file) * 1000,
+        "max_ms": max(per_file) * 1000,
+    }
+    return results
+
+
+# metric path, and whether higher is better
+METRICS = [
+    ("bundles.files_per_s", True),
+    ("large.median_ms", False),
+    ("large.p99_ms", False),
+    ("scaling.x2", False),
+    ("scaling.x4", False),
+    ("incremental.median_ms", False),
+    ("incremental.p99_ms", False),
+    ("corpus_incremental.median_ms", False),
+    ("corpus_incremental.max_ms", False),
+]
+
+
+def get(results, path):
+    a, b = path.split(".")
+    return results[a][b]
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--update", action="store_true", help="rewrite bench/baseline.json")
+    ap.add_argument("--tolerance", type=float, default=2.0,
+                    help="fail if a metric is this many times worse than baseline")
+    ap.add_argument("--runs", type=int, default=30)
+    args = ap.parse_args()
+
+    results = run(args.runs)
+    results["machine"] = f"{platform.system()} {platform.machine()} / Python {platform.python_version()}"
+
+    baseline = json.load(open(BASELINE)) if os.path.exists(BASELINE) else None
+    failed = False
+    for path, higher_better in METRICS:
+        value = get(results, path)
+        line = f"  {path:30} {value:10.3f}"
+        if baseline:
+            base = get(baseline, path) if path.split(".")[0] in baseline else value
+            ratio = (base / value) if higher_better else (value / base)
+            line += f"   baseline {base:10.3f}   {ratio:5.2f}x"
+            if ratio > args.tolerance:
+                line += "   REGRESSION"
+                failed = True
+        print(line)
+    # absolute gates from the spec, independent of the baseline
+    if results["scaling"]["x2"] > 3.0 or results["scaling"]["x4"] > 6.0:
+        print("  scaling is not linear (spec §9.3)")
+        failed = True
+
+    if args.update:
+        os.makedirs(os.path.dirname(BASELINE), exist_ok=True)
+        with open(BASELINE, "w") as f:
+            json.dump(results, f, indent=2, sort_keys=True)
+            f.write("\n")
+        print(f"wrote {os.path.relpath(BASELINE, ROOT)}")
+        return 0
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
