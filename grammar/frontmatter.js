@@ -104,6 +104,28 @@ const rules = {
     ),
   ),
 
+  /**
+   * A pair's value on the lines below its key: `_fm_content`, with the
+   * `value` field on exactly the node that is the value (not on leading
+   * unsupported lines, properties, or trailing unsupported lines).
+   */
+  _fm_nested_value: ($) => seq(
+    repeat(seq($.yaml_unsupported, $._fm_newline)),
+    choice(
+      field('value', $.block_mapping),
+      field('value', $.block_sequence),
+      prec.right(seq(
+        choice(
+          seq(optional($._fm_properties), field('value', choice($._fm_inline_node, $.block_scalar))),
+          $._fm_properties,
+          seq($._fm_properties, field('value', $.yaml_unsupported)),
+        ),
+        repeat(seq($._fm_newline, $.yaml_unsupported)),
+      )),
+      field('value', $.yaml_unsupported),
+    ),
+  ),
+
   /** A scalar or flow node that stands alone as a block's content. */
   _fm_line_node: ($) => prec.right(seq(
     choice(
@@ -143,7 +165,7 @@ const rules = {
   _fm_pair_value: ($) => choice(
     seq(optional($._fm_properties), field('value', $._fm_inline_node)),
     seq(optional($._fm_properties), field('value', $.block_scalar)),
-    seq(optional($._fm_properties), $._fm_indent, field('value', $._fm_content), $._fm_dedent),
+    seq(optional($._fm_properties), $._fm_indent, $._fm_nested_value, $._fm_dedent),
     seq(optional($._fm_properties), $._fm_sequence_newline, field('value', $.block_sequence), $._fm_dedent),
     $._fm_properties,
     seq(optional($._fm_properties), field('value', $.yaml_unsupported)),

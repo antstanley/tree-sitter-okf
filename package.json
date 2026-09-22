@@ -17,16 +17,21 @@
   "types": "bindings/node/index.d.ts",
   "files": [
     "grammar.js",
-    "queries",
+    "grammar/",
+    "queries/",
     "src/grammar.json",
     "src/node-types.json",
     "src/parser.c",
     "src/scanner.c",
-    "bindings/node/index.js",
-    "bindings/node/index.d.ts",
-    "bindings/node/binding.cc",
-    "bindings/node/binding.gyp",
-    "bindings/c/tree_sitter/tree-sitter-okf.h"
+    "src/tree_sitter/",
+    "bindings/node/",
+    "!bindings/node/*_test.js",
+    "bindings/c/tree_sitter/tree-sitter-okf.h",
+    "binding.gyp",
+    "prebuilds/**",
+    "tree-sitter.json",
+    "LICENSE",
+    "NOTICE"
   ],
   "tree-sitter": [
     {
@@ -42,13 +47,14 @@
     }
   ],
   "scripts": {
-    "generate": "tree-sitter generate",
+    "generate": "tree-sitter generate --abi 14",
     "build": "tree-sitter build",
     "test": "tree-sitter test",
     "test:all": "script/test",
     "install": "node-gyp-build",
     "prestart": "tree-sitter build --wasm",
-    "start": "tree-sitter playground"
+    "start": "tree-sitter playground",
+    "test:bindings": "node --test bindings/node/*_test.js"
   },
   "dependencies": {
     "node-addon-api": "^8.0.0",
@@ -63,6 +69,7 @@
     }
   },
   "devDependencies": {
-    "tree-sitter-cli": "^0.25.0"
+    "tree-sitter": "^0.25.0",
+    "tree-sitter-cli": "^0.25.10"
   }
 }

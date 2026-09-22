@@ -1,0 +1,217 @@
+#!/usr/bin/env python3
+"""Generate docs/node-types.md from src/node-types.json (spec §7.2, §7.6).
+
+Every public (named) node gets a row: its fields and children, where its name
+comes from (tree-sitter-markdown, tree-sitter-yaml, or new in OKF) and how it
+diverges from that source.  `--check` fails if a node has no row here, or if
+docs/node-types.md is out of date, so the alignment table cannot drift from
+the grammar (`make check-nodes` / CI).
+
+Usage: script/node-types [--check]
+"""
+
+import json
+import os
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+NODE_TYPES = os.path.join(ROOT, "src", "node-types.json")
+OUTPUT = os.path.join(ROOT, "docs", "node-types.md")
+
+MD = "tree-sitter-markdown"
+MDI = "tree-sitter-markdown-inline"
+YAML = "tree-sitter-yaml"
+NEW = "okf-new"
+
+# node: (group, source, divergence, description)
+NODES = {
+    # ---- document
+    "source_file": ("Document", NEW, "Upstream markdown's root is `document`, which has no frontmatter field.",
+                    "The whole file: optional `frontmatter`, then `body` (absent only when the frontmatter is unterminated)."),
+    "body": ("Document", NEW, "Upstream wraps top-level blocks before the first heading in an extra `section`; here they are direct children of `body`.",
+             "The markdown body: leading blocks, then one `section` per top-level heading.  Always present (possibly zero-width) unless the frontmatter is unterminated."),
+    "frontmatter": ("Document", NEW, "Replaces upstream's opaque `minus_metadata` with a parsed OKF-YAML tree.",
+                    "The `---` delimited frontmatter block at byte offset 0.  A missing closer is `(MISSING \"---\")`."),
+    # ---- frontmatter
+    "block_mapping": ("Frontmatter", YAML, "", "`key: value` pairs at one indentation."),
+    "block_mapping_pair": ("Frontmatter", YAML, "Anchors and tags are children of the pair, never inside the `value` field.",
+                           "One `key: value`.  `value` is absent for an empty value."),
+    "block_sequence": ("Frontmatter", YAML, "", "`- item` entries at one indentation, including OKF's zero-indented form under a key."),
+    "block_sequence_item": ("Frontmatter", YAML, "The value is a direct child: there is no `value` field or `block_node` wrapper.",
+                            "One `- item`."),
+    "flow_mapping": ("Frontmatter", YAML, "", "`{ key: value, ... }`."),
+    "flow_pair": ("Frontmatter", YAML, "", "A `key: value` inside a flow collection."),
+    "flow_sequence": ("Frontmatter", YAML, "", "`[ a, b, ... ]`."),
+    "plain_scalar": ("Frontmatter", YAML, "A leaf with the source bytes: tree-sitter-yaml nests `string_scalar`, `integer_scalar`, ... inside it.  Typing is a query policy here (spec D3, queries/okf/scalars.scm).",
+                     "An unquoted scalar, folded continuation lines included, or a plain key."),
+    "single_quote_scalar": ("Frontmatter", YAML, "", "`'...'`, quotes included."),
+    "double_quote_scalar": ("Frontmatter", YAML, "No `escape_sequence` children.", "`\"...\"`, quotes included."),
+    "block_scalar": ("Frontmatter", YAML, "", "`|` or `>` with its indicators and indented body.  Trailing blank lines are not part of the node."),
+    "anchor": ("Frontmatter", YAML, "No `anchor_name` child.", "`&name`: recognised, never resolved (spec Q3)."),
+    "alias": ("Frontmatter", YAML, "No `alias_name` child.", "`*name`: recognised, never resolved (spec Q3)."),
+    "tag": ("Frontmatter", YAML, "", "`!tag`, `!!tag` or `!<verbatim>`."),
+    "comment": ("Frontmatter", YAML, "", "`# ...` in the frontmatter.  Never produced in the body."),
+    "yaml_directive": ("Frontmatter", YAML, "Also covers `%TAG` directives.", "A `%` directive line."),
+    "yaml_document_end": ("Frontmatter", NEW, "tree-sitter-yaml has no node for `...`.", "The `...` document end marker."),
+    "yaml_unsupported": ("Frontmatter", NEW, "", "An opaque line (or value) outside OKF-YAML (docs/okf-yaml.md).  Never an ERROR."),
+    # ---- blocks
+    "section": ("Blocks", MD, "", "A heading and everything up to the next heading of the same or higher level (spec Q8)."),
+    "atx_heading": ("Blocks", MD, "", "`# ...` to `###### ...`; its text is the `heading_content` field."),
+    "atx_h1_marker": ("Blocks", MD, "", "`#`"),
+    "atx_h2_marker": ("Blocks", MD, "", "`##`"),
+    "atx_h3_marker": ("Blocks", MD, "", "`###`"),
+    "atx_h4_marker": ("Blocks", MD, "", "`####`"),
+    "atx_h5_marker": ("Blocks", MD, "", "`#####`"),
+    "atx_h6_marker": ("Blocks", MD, "", "`######`"),
+    "setext_heading": ("Blocks", MD, "", "A paragraph underlined with `===` or `---`."),
+    "setext_h1_underline": ("Blocks", MD, "", "`===`"),
+    "setext_h2_underline": ("Blocks", MD, "", "`---` under a paragraph."),
+    "paragraph": ("Blocks", MD, "", "A paragraph: its `inline` content and line ending."),
+    "inline": ("Blocks", MD, "Holds the inline nodes directly; upstream leaves it opaque for an injected second grammar.",
+               "Inline content of a paragraph or heading."),
+    "indented_code_block": ("Blocks", MD, "", "Four-space indented code (OKF §10.2)."),
+    "fenced_code_block": ("Blocks", MD, "", "A backtick or tilde fence (OKF §10.3 computations)."),
+    "fenced_code_block_delimiter": ("Blocks", MD, "", "The opening or closing fence."),
+    "info_string": ("Blocks", MD, "May start with `,`, which upstream could not parse.", "The text after an opening fence."),
+    "language": ("Blocks", MD, "", "The first word of the info string (`sql`)."),
+    "code_fence_content": ("Blocks", MD, "", "The lines of a fenced code block."),
+    "html_block": ("Blocks", MD, "", "An HTML block (opaque; injected as html)."),
+    "thematic_break": ("Blocks", MD, "", "`***`, `---` or `___`."),
+    "block_quote": ("Blocks", MD, "", "A `>` block quote."),
+    "block_quote_marker": ("Blocks", MD, "", "`>`"),
+    "block_continuation": ("Blocks", MD, "", "The container markers or indentation that continue a block on a new line."),
+    "list": ("Blocks", MD, "", "A bullet or ordered list."),
+    "list_item": ("Blocks", MD, "", "One list item."),
+    "list_marker_minus": ("Blocks", MD, "", "`-`"),
+    "list_marker_plus": ("Blocks", MD, "", "`+`"),
+    "list_marker_star": ("Blocks", MD, "", "`*`"),
+    "list_marker_dot": ("Blocks", MD, "", "`1.`"),
+    "list_marker_parenthesis": ("Blocks", MD, "", "`1)`"),
+    "task_list_marker_checked": ("Blocks", MD, "Includes the whitespace after it; only recognised when it can start a task item, so `[x](url)` stays a link.",
+                                 "`[x]`"),
+    "task_list_marker_unchecked": ("Blocks", MD, "As `task_list_marker_checked`.", "`[ ]`"),
+    "link_reference_definition": ("Blocks", MD, "", "`[label]: destination \"title\"`."),
+    "pipe_table": ("Blocks", MD, "", "A GFM pipe table (OKF `# Schema`, §4.2)."),
+    "pipe_table_header": ("Blocks", MD, "", "The header row."),
+    "pipe_table_delimiter_row": ("Blocks", MD, "Accepts a leading pipe with no trailing one (`|---`).", "The `|---|:--:|` row."),
+    "pipe_table_delimiter_cell": ("Blocks", MD, "", "One `---`, `:--`, `--:` or `:-:`."),
+    "pipe_table_align_left": ("Blocks", MD, "", "The `:` of a left-aligned column."),
+    "pipe_table_align_right": ("Blocks", MD, "", "The `:` of a right-aligned column."),
+    "pipe_table_row": ("Blocks", MD, "", "A body row."),
+    "pipe_table_cell": ("Blocks", MD, "Holds inline nodes directly.  Every cell between two pipes is a node, empty and blank ones included, so a cell's index is its column; the padding around a cell is not part of it.",
+                        "One cell."),
+    "footnote_definition": ("Blocks", NEW, "tree-sitter-markdown has no footnotes.", "`[^label]: text` (OKF §5.1 per-claim attribution): a container like a list item, continued by lines indented four columns."),
+    "footnote_label": ("Blocks", NEW, "", "The label of a footnote definition or reference, without `[^` and `]`: the join key against frontmatter `sources[].id`."),
+    # ---- inlines
+    "code_span": ("Inlines", MDI, "", "`` `code` ``"),
+    "code_span_delimiter": ("Inlines", MDI, "", "A code span's backticks."),
+    "emphasis": ("Inlines", MDI, "", "`*em*` / `_em_`"),
+    "strong_emphasis": ("Inlines", MDI, "", "`**strong**` / `__strong__`"),
+    "strikethrough": ("Inlines", MDI, "", "`~~text~~` (GFM)."),
+    "emphasis_delimiter": ("Inlines", MDI, "", "One delimiter character of emphasis, strong emphasis or strikethrough."),
+    "inline_link": ("Inlines", MDI, "", "`[text](destination \"title\")`: OKF cross-links (§6.1)."),
+    "full_reference_link": ("Inlines", MDI, "", "`[text][label]`"),
+    "collapsed_reference_link": ("Inlines", MDI, "", "`[text][]`"),
+    "shortcut_link": ("Inlines", MDI, "", "`[text]`"),
+    "image": ("Inlines", MDI, "", "`![description](destination)`"),
+    "image_description": ("Inlines", MDI, "", "An image's alt text."),
+    "link_text": ("Inlines", MDI, "", "A link's text."),
+    "link_label": ("Inlines", MDI, "", "A reference label."),
+    "link_destination": ("Inlines", MDI, "", "A link or image destination (classified by queries/okf/links.scm)."),
+    "link_title": ("Inlines", MDI, "", "A link or image title."),
+    "uri_autolink": ("Inlines", MDI, "", "`<https://...>`"),
+    "email_autolink": ("Inlines", MDI, "", "`<name@example.com>`"),
+    "hard_line_break": ("Inlines", MDI, "", "Two trailing spaces or a backslash before a line break."),
+    "backslash_escape": ("Inlines", MDI, "", "`\\*`"),
+    "entity_reference": ("Inlines", MDI, "", "`&amp;`"),
+    "numeric_character_reference": ("Inlines", MDI, "", "`&#169;`"),
+    "html_tag": ("Inlines", MDI, "", "Inline HTML (opaque; injected as html)."),
+    "footnote_reference": ("Inlines", NEW, "tree-sitter-markdown has no footnotes.", "`[^label]` in text (OKF §5.1)."),
+}
+
+GROUPS = ["Document", "Frontmatter", "Blocks", "Inlines"]
+
+HEADER = """# Node types
+
+<!-- Generated by script/node-types from src/node-types.json.  Do not edit:
+     edit the table in script/node-types and run it.  CI runs it with --check. -->
+
+The public API of the grammar: every named node, its fields, and where its
+name comes from.  Node and field names follow semantic versioning (spec P7):
+renaming one is a breaking release.
+
+Names are reused from [tree-sitter-markdown] and [tree-sitter-yaml] wherever a
+construct corresponds (spec D10), so queries written for those grammars mostly
+work here; **Divergence** records every place they do not.  `okf-new` marks a
+node neither grammar has.
+
+Hidden rules (`_name`) and anonymous tokens (`"-"`, `"["`, ...) are not
+listed.  Differences from the node names sketched in docs/grammar-spec.md
+§6: the heading text is the `heading_content` *field* on an `inline` node
+(upstream's shape), and there are no `text`, `soft_line_break` or
+`html_comment` nodes (upstream has none; the text is in its parent's range).
+
+[tree-sitter-markdown]: https://github.com/tree-sitter-grammars/tree-sitter-markdown
+[tree-sitter-yaml]: https://github.com/tree-sitter-grammars/tree-sitter-yaml
+"""
+
+
+def describe_types(types):
+    return ", ".join(f"`{t['type']}`" if t["named"] else f"`\"{t['type']}\"`" for t in types)
+
+
+def render(node_types):
+    by_type = {n["type"]: n for n in node_types if n["named"]}
+    out = [HEADER]
+    for group in GROUPS:
+        out.append(f"\n## {group}\n")
+        for name, (g, source, divergence, description) in NODES.items():
+            if g != group or name not in by_type:
+                continue
+            n = by_type[name]
+            out.append(f"\n### `{name}`\n\n{description}\n")
+            meta = [f"- **Source:** {source}"]
+            if divergence:
+                meta.append(f"- **Divergence:** {divergence}")
+            for field, spec in sorted((n.get("fields") or {}).items()):
+                flags = []
+                if spec.get("required"):
+                    flags.append("required")
+                if spec.get("multiple"):
+                    flags.append("multiple")
+                meta.append(f"- **Field `{field}`** ({', '.join(flags) or 'optional'}): "
+                            f"{describe_types(spec['types'])}")
+            children = n.get("children")
+            if children:
+                meta.append(f"- **Children:** {describe_types(children['types'])}")
+            out.append("\n".join(meta) + "\n")
+    return "".join(out)
+
+
+def main():
+    check = "--check" in sys.argv
+    node_types = json.load(open(NODE_TYPES, encoding="utf-8"))
+    named = {n["type"] for n in node_types if n["named"]}
+    missing = sorted(named - set(NODES))
+    stale = sorted(set(NODES) - named)
+    problems = []
+    if missing:
+        problems.append("nodes with no row in script/node-types: " + ", ".join(missing))
+    if stale:
+        problems.append("rows for nodes the grammar no longer has: " + ", ".join(stale))
+    text = render(node_types)
+    if check:
+        current = open(OUTPUT, encoding="utf-8").read() if os.path.exists(OUTPUT) else ""
+        if current != text:
+            problems.append("docs/node-types.md is out of date: run script/node-types")
+    else:
+        with open(OUTPUT, "w", encoding="utf-8") as f:
+            f.write(text)
+        print(f"wrote {os.path.relpath(OUTPUT, ROOT)} ({len(named)} nodes)")
+    for p in problems:
+        print(p)
+    return 1 if problems else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

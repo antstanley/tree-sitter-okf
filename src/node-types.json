@@ -106,15 +106,11 @@
         ]
       },
       "value": {
-        "multiple": true,
+        "multiple": false,
         "required": false,
         "types": [
           {
             "type": "alias",
-            "named": true
-          },
-          {
-            "type": "anchor",
             "named": true
           },
           {
@@ -150,10 +146,6 @@
             "named": true
           },
           {
-            "type": "tag",
-            "named": true
-          },
-          {
             "type": "yaml_unsupported",
             "named": true
           }
@@ -170,6 +162,10 @@
         },
         {
           "type": "tag",
+          "named": true
+        },
+        {
+          "type": "yaml_unsupported",
           "named": true
         }
       ]

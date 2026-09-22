@@ -10,3 +10,9 @@ target/
 .DS_Store
 .devtools/venv/
 *.egg-info/
+__pycache__/
+*.pyc
+*.a
+*.pc
+.build/
+Package.resolved
