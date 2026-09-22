@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Apply pending changesets (spec §10.3).  `changeset version` bumps
+# package.json and writes CHANGELOG.md; `tree-sitter version` then carries
+# the new version into every other manifest and lockfile (Cargo.toml,
+# Cargo.lock, pyproject.toml, tree-sitter.json, Makefile, CMakeLists.txt,
+# package-lock.json), so the tag check in release.yml always agrees.
+#
+# Run by the "Version packages" PR (.github/workflows/version-pr.yml).
+# @changesets/changelog-github needs GITHUB_TOKEN to look up PR links.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+npx changeset version
+version=$(node -p "require('./package.json').version")
+npx tree-sitter version "$version"
+echo "versioned packages at $version"

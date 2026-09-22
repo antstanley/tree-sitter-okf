@@ -42,6 +42,8 @@ class EggInfo(egg_info):
         super().find_sources()
         self.filelist.recursive_include("queries", "*.scm")
         self.filelist.include("src/tree_sitter/*.h")
+        # BuildExt compiles src/scanner.c when present: ship it in the sdist
+        self.filelist.include("src/scanner.c")
 
 
 setup(

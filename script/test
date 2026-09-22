@@ -37,6 +37,9 @@ fi
 
 step() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
 
+step "every manifest carries the same version"
+node script/check-versions.js
+
 step "generate is reproducible"
 before=$(cat src/parser.c src/grammar.json src/node-types.json | shasum -a 256)
 "$TS" generate --abi 14

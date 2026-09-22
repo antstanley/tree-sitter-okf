@@ -2,7 +2,10 @@
   "name": "tree-sitter-okf",
   "version": "1.0.0",
   "description": "Open Knowledge Format (OKF) grammar for tree-sitter",
-  "repository": "https://github.com/antstanley/tree-sitter-okf",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/antstanley/tree-sitter-okf.git"
+  },
   "license": "MIT",
   "keywords": [
     "tree-sitter",
@@ -54,7 +57,10 @@
     "install": "node-gyp-build",
     "prestart": "tree-sitter build --wasm",
     "start": "tree-sitter playground",
-    "test:bindings": "node --test bindings/node/*_test.js"
+    "test:bindings": "node --test bindings/node/*_test.js",
+    "changeset": "changeset",
+    "changeset:version": "script/version-packages",
+    "check-versions": "node script/check-versions.js"
   },
   "dependencies": {
     "node-addon-api": "^8.0.0",
@@ -69,7 +75,13 @@
     }
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^0.7.0",
+    "@changesets/cli": "^2.31.1",
     "tree-sitter": "^0.25.0",
     "tree-sitter-cli": "^0.25.10"
+  },
+  "allowScripts": {
+    "tree-sitter-cli@0.25.10": true,
+    "tree-sitter@0.25.1": true
   }
 }

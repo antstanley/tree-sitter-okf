@@ -1,20 +1,8 @@
-# Changelog
+# tree-sitter-okf
 
-All notable changes to `tree-sitter-okf`. The parser follows
-[semantic versioning](https://semver.org/). Public node types, fields and
-query captures are API: renaming or removing one is a major release, and
-every such release has a node-rename table here (spec P7, §10.3).
+## 1.0.0
 
-Each release records three versions:
-
-* **parser**: this package's version.
-* **OKF**: the Open Knowledge Format version the grammar targets.
-* **query library**: the version of `queries/okf/`, which follows the OKF
-  version.
-
-## 1.0.0 — 2026-09-22
-
-parser **1.0.0** · OKF **0.2** (spec @ `ad30107`) · query library **0.2.0** ·
+Released 2026-09-22 · parser **1.0.0** · OKF **0.2** (spec @ `ad30107`) · query library **0.2.0** ·
 tree-sitter ABI **14** (generated with tree-sitter CLI 0.25)
 
 First release. It implements `docs/grammar-spec.md` milestones M0–M5.

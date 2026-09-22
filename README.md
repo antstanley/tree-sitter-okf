@@ -230,6 +230,11 @@ Test fixtures in `test/fixtures/bundles/` are the four official OKF example
 bundles, pinned by `LOCK.json` and refreshed with `script/sync-fixtures`.
 Upstream markdown is refreshed with `script/revendor` (see `MERGE.md`).
 
+Releases are cut with [changesets](https://github.com/changesets/changesets).
+Run `npx changeset` for every user-facing change. Tagging the merged
+"version packages" PR publishes to npm, crates.io and PyPI by trusted
+publishing (see [`docs/releasing.md`](docs/releasing.md)).
+
 The experimental `[[wiki link]]` and `#tag` dialects are off by default.
 Build them with `OKF_DIALECT_WIKILINK=1 OKF_DIALECT_TAGS=1 npm run generate`.
 
