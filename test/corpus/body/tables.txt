@@ -223,3 +223,71 @@ Single column table
         (pipe_table_delimiter_cell))
       (pipe_table_row
         (pipe_table_cell)))))
+
+================================================================================
+A pipe inside a code span splits the cell (GFM)
+================================================================================
+| `a | b` | c |
+|--|--|--|
+| x | y | z |
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (pipe_table
+      (pipe_table_header
+        (pipe_table_cell)
+        (pipe_table_cell)
+        (pipe_table_cell))
+      (pipe_table_delimiter_row
+        (pipe_table_delimiter_cell)
+        (pipe_table_delimiter_cell)
+        (pipe_table_delimiter_cell))
+      (pipe_table_row
+        (pipe_table_cell)
+        (pipe_table_cell)
+        (pipe_table_cell)))))
+
+================================================================================
+An escaped pipe stays inside a code span
+================================================================================
+| `a \| b` | c |
+|--|--|
+| x | y |
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (pipe_table
+      (pipe_table_header
+        (pipe_table_cell
+          (code_span
+            (code_span_delimiter)
+            (code_span_delimiter)))
+        (pipe_table_cell))
+      (pipe_table_delimiter_row
+        (pipe_table_delimiter_cell)
+        (pipe_table_delimiter_cell))
+      (pipe_table_row
+        (pipe_table_cell)
+        (pipe_table_cell)))))
+
+================================================================================
+Emphasis does not span cells
+================================================================================
+| *a | b* |
+|--|--|
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (pipe_table
+      (pipe_table_header
+        (pipe_table_cell)
+        (pipe_table_cell))
+      (pipe_table_delimiter_row
+        (pipe_table_delimiter_cell)
+        (pipe_table_delimiter_cell)))))

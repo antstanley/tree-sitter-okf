@@ -205,6 +205,9 @@ static const uint8_t STATE_CLOSE_BLOCK = 0x1 << 4;
 static const uint8_t STATE_SINGLE_LINE = 0x1 << 5;
 // OKF: a zero-width blank line was emitted at end of input (at most once).
 static const uint8_t STATE_EOF_BLANK_LINE = 0x1 << 6;
+// OKF: the single-line content is a pipe table row, so an unescaped `|`
+// ends every inline span (GFM splits cells before parsing inlines).
+static const uint8_t STATE_TABLE_ROW = 0x1 << 7;
 
 /* Inline scanner state bits (`Scanner.inline_state`). */
 // Current delimiter run is opening
@@ -286,6 +289,9 @@ typedef struct Scanner {
     bool fm_active;
     bool fm_root_known;
     bool fm_unsupported_rest;
+    // The next line is deeper than its block but cannot open one: it is
+    // opaque as a whole.
+    bool fm_force_unsupported;
     uint8_t fm_line;
     uint8_t fm_depth;
     FmLevel fm_levels[FM_MAX_DEPTH];
@@ -344,7 +350,8 @@ static unsigned serialize(Scanner *s, char *buffer) {
     buffer[size++] = (char)(s->prev_column & 0xff);
     buffer[size++] = (char)((s->prev_column >> 8) & 0xff);
     buffer[size++] = (char)((s->fm_active ? 1 : 0) | (s->fm_root_known ? 2 : 0) |
-                            (s->fm_unsupported_rest ? 4 : 0));
+                            (s->fm_unsupported_rest ? 4 : 0) |
+                            (s->fm_force_unsupported ? 8 : 0));
     buffer[size++] = (char)s->fm_line;
     buffer[size++] = (char)s->fm_depth;
     size_t blocks = s->open_blocks.size;
@@ -381,6 +388,7 @@ static void deserialize(Scanner *s, const char *buffer, unsigned length) {
     s->fm_active = false;
     s->fm_root_known = false;
     s->fm_unsupported_rest = false;
+    s->fm_force_unsupported = false;
     s->fm_line = FM_MID_LINE;
     s->fm_depth = 1;
     s->fm_levels[0].indent = 0;
@@ -403,6 +411,7 @@ static void deserialize(Scanner *s, const char *buffer, unsigned length) {
     s->fm_active = (flags & 1) != 0;
     s->fm_root_known = (flags & 2) != 0;
     s->fm_unsupported_rest = (flags & 4) != 0;
+    s->fm_force_unsupported = (flags & 8) != 0;
     s->fm_line = (uint8_t)buffer[size++];
     s->fm_depth = (uint8_t)buffer[size++];
     size_t blocks = (uint8_t)buffer[size] | ((size_t)(uint8_t)buffer[size + 1] << 8);
@@ -745,11 +754,22 @@ static bool line_is_delimiter_row(Scanner *s, TSLexer *lexer) {
 // which was the end of the paragraph there because of the injection).
 static bool code_span_closer_ahead(Scanner *s, TSLexer *lexer, uint8_t level) {
     bool single_line = (s->state & STATE_SINGLE_LINE) != 0;
+    bool table_row = (s->state & STATE_TABLE_ROW) != 0;
     bool on_continuation_line = false;
     bool line_has_pipe = false;
     size_t close_level = 0;
     for (;;) {
         int32_t c = lexer->lookahead;
+        if (table_row && close_level != level) {
+            // A cell ends at an unescaped `|`, and a code span with it.
+            if (c == '|') return false;
+            if (c == '\\') {
+                close_level = 0;
+                advance(s, lexer);
+                if (lexer->lookahead == '|') advance(s, lexer);
+                continue;
+            }
+        }
         if (c == '`' && !lexer->eof(lexer)) {
             close_level++;
             advance(s, lexer);
@@ -810,10 +830,17 @@ static bool code_span_closer_ahead(Scanner *s, TSLexer *lexer, uint8_t level) {
 // single-line construct) ends first.  Any doubt answers "yes".
 static bool closer_possible(Scanner *s, TSLexer *lexer, int32_t closer) {
     bool single_line = (s->state & STATE_SINGLE_LINE) != 0;
+    bool table_row = (s->state & STATE_TABLE_ROW) != 0;
     for (;;) {
         if (lexer->eof(lexer)) return false;
         int32_t c = lexer->lookahead;
         if (c == closer) return true;
+        if (table_row && c == '|') return false; // the cell ends first
+        if (table_row && c == '\\') {
+            advance(s, lexer);
+            if (lexer->lookahead == '|') advance(s, lexer);
+            continue;
+        }
         if (is_newline(c)) {
             if (single_line) return false;
             consume_newline(s, lexer);
@@ -1886,7 +1913,7 @@ static bool parse_pipe_table(Scanner *s, TSLexer *lexer) {
     if (table) {
         lexer->result_symbol = PIPE_TABLE_START;
         // OKF: table rows are single-line content.
-        if (!s->simulate) s->state |= STATE_SINGLE_LINE;
+        if (!s->simulate) s->state |= STATE_SINGLE_LINE | STATE_TABLE_ROW;
         return true;
     }
     return false;
@@ -1926,7 +1953,7 @@ static bool parse_bracket(Scanner *s, TSLexer *lexer, const bool *valid_symbols,
             s->simulate = false;
             if (table) {
                 lexer->result_symbol = PIPE_TABLE_START;
-                s->state |= STATE_SINGLE_LINE;
+                s->state |= STATE_SINGLE_LINE | STATE_TABLE_ROW;
                 return true;
             }
             if (saw_close_bracket || crossed_line) return false;
@@ -1992,7 +2019,7 @@ static bool parse_bracket(Scanner *s, TSLexer *lexer, const bool *valid_symbols,
         s->simulate = simulate;
         if (table) {
             lexer->result_symbol = PIPE_TABLE_START;
-            if (!s->simulate) s->state |= STATE_SINGLE_LINE;
+            if (!s->simulate) s->state |= STATE_SINGLE_LINE | STATE_TABLE_ROW;
             return true;
         }
         s->indentation = indentation;
@@ -2195,7 +2222,7 @@ static BlockStartPunctuation block_start_punctuation(Scanner *s, TSLexer *lexer,
             s->simulate = false;
             if (table) {
                 lexer->result_symbol = PIPE_TABLE_START;
-                s->state |= STATE_SINGLE_LINE;
+                s->state |= STATE_SINGLE_LINE | STATE_TABLE_ROW;
                 return PUNCTUATION_EMITTED;
             }
         }
@@ -2210,7 +2237,7 @@ static BlockStartPunctuation block_start_punctuation(Scanner *s, TSLexer *lexer,
         s->simulate = false;
         if (table) {
             lexer->result_symbol = PIPE_TABLE_START;
-            s->state |= STATE_SINGLE_LINE;
+            s->state |= STATE_SINGLE_LINE | STATE_TABLE_ROW;
             return PUNCTUATION_EMITTED;
         }
     }
@@ -2485,7 +2512,7 @@ static bool md_scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
                 if (valid_symbols[PIPE_TABLE_LINE_ENDING]) {
                     if (all_will_be_matched) {
                         lexer->result_symbol = PIPE_TABLE_LINE_ENDING;
-                        s->state |= STATE_SINGLE_LINE;
+                        s->state |= STATE_SINGLE_LINE | STATE_TABLE_ROW;
                         return true;
                     }
                 } else {
@@ -2516,7 +2543,7 @@ static bool md_scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
             }
             // reset some state variables
             s->state &= (~STATE_WAS_SOFT_LINE_BREAK);
-            s->state &= (~STATE_SINGLE_LINE);
+            s->state &= (~(STATE_SINGLE_LINE | STATE_TABLE_ROW));
             // OKF: a hard line ending ends any inline content, so inline
             // state is reset (canonical states merge, see `serialize`).
             s->inline_state = 0;
@@ -2544,6 +2571,7 @@ static void fm_reset(Scanner *s) {
     s->fm_active = false;
     s->fm_root_known = false;
     s->fm_unsupported_rest = false;
+    s->fm_force_unsupported = false;
     s->fm_line = FM_MID_LINE;
     s->fm_depth = 1;
     s->fm_levels[0].indent = 0;
@@ -3479,7 +3507,10 @@ static bool fm_line_break(Scanner *s, TSLexer *lexer, const bool *valid_symbols)
                 return fm_emit(s, lexer, FM_INDENT, FM_BREAK_PENDING);
             }
             if (valid_symbols[FM_NEWLINE]) {
-                // an over-indented sibling: mis-nest it rather than fail (P4)
+                // Over-indented, but nothing here can own a nested block
+                // (`a: b` then `  c: d`): not a sibling, so the line is
+                // opaque rather than mis-nested (P4).
+                s->fm_force_unsupported = true;
                 return fm_emit(s, lexer, FM_NEWLINE, FM_BREAK_PENDING);
             }
         } else {
@@ -3556,6 +3587,11 @@ static bool fm_scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
                            FM_BREAK_PENDING);
         }
         s->fm_line = FM_LINE_START;
+    }
+
+    if (s->fm_force_unsupported) {
+        s->fm_force_unsupported = false;
+        if (valid_symbols[FM_UNSUPPORTED]) return fm_unsupported_to_eol(s, lexer);
     }
 
     if (is_blank(c)) {

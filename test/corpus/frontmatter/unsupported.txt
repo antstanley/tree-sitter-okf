@@ -237,7 +237,7 @@ type: Metric
   body: (body))
 
 ================================================================================
-Over-indented sibling is mis-nested, not an error
+Over-indented line is opaque, not mis-nested or an error
 ================================================================================
 ---
 type: Metric
@@ -253,9 +253,7 @@ status: stable
       (block_mapping_pair
         key: (plain_scalar)
         value: (plain_scalar))
-      (block_mapping_pair
-        key: (plain_scalar)
-        value: (plain_scalar))
+      (yaml_unsupported)
       (block_mapping_pair
         key: (plain_scalar)
         value: (plain_scalar))))

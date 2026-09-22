@@ -302,3 +302,50 @@ body
   body: (body
     (paragraph
       (inline))))
+
+================================================================================
+An indented --- continues a scalar, never closes (spec Q5)
+================================================================================
+---
+description: foo
+  ---
+notes: |
+  x
+  ---
+---
+body
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_scalar))))
+  body: (body
+    (paragraph
+      (inline))))
+
+================================================================================
+A column-0 --- closes even inside an unclosed quoted scalar (spec Q5)
+================================================================================
+---
+a: "b
+---
+  c"
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (yaml_unsupported))))
+  body: (body
+    (paragraph
+      (inline))))
