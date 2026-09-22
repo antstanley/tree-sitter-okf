@@ -17,3 +17,4 @@ __pycache__/
 .build/
 Package.resolved
 bindings/python/tree_sitter_okf/queries
+*.tgz
