@@ -1,0 +1,100 @@
+# Continuous integration (spec §10.3): generate reproducibility, the corpus,
+# node-type docs, vendor locks, differential, query, helper and property
+# suites (script/test), every binding, and a coarse benchmark gate.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test suites (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Node dependencies
+        run: npm ci
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "tree-sitter>=0.25,<0.27" "tree-sitter-yaml>=0.7" "PyYAML>=6" setuptools wheel
+          python -m pip install -e .
+      - name: script/test
+        env:
+          PYTHON: python
+        run: script/test
+      - name: Benchmark (coarse gate)
+        env:
+          PYTHON: python
+        # The baseline was recorded on a developer machine; CI runners differ,
+        # so only order-of-magnitude regressions and non-linear scaling fail.
+        run: python script/bench --tolerance 10
+
+  rust:
+    name: Rust binding
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test
+
+  go:
+    name: Go binding
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: go mod tidy
+      - run: go test ./...
+
+  swift:
+    name: Swift binding
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test
+
+  c:
+    name: C library
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # a fresh checkout's mtimes can make src/parser.c look older than
+      # src/grammar.json, which would ask for the tree-sitter CLI
+      - run: touch src/parser.c
+      - run: make
+      - run: cmake -S . -B build/cmake && cmake --build build/cmake
+
+  dialects:
+    name: Experimental dialects generate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Generate with wikilink and tag dialects
+        env:
+          OKF_DIALECT_WIKILINK: "1"
+          OKF_DIALECT_TAGS: "1"
+        run: npx tree-sitter generate --abi 14 && npx tree-sitter build

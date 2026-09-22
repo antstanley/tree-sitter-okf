@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# Run every test suite (spec §9, §10.3).  Stops at the first failing suite.
+#
+#   script/test            everything except the benchmark
+#   script/test --quick    skip the property suite's extra seeds
+#   script/test --bench    also run script/bench against bench/baseline.json
+#
+# Needs: the tree-sitter CLI (node_modules/.bin or $TREE_SITTER), Node with
+# `npm install` done, and a Python with the `tree-sitter` package, PyYAML,
+# tree-sitter-yaml and this package installed in development mode
+# ($PYTHON, default .devtools/venv/bin/python, else python3).
+
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+quick=0
+bench=0
+for arg in "$@"; do
+  case "$arg" in
+    --quick) quick=1 ;;
+    --bench) bench=1 ;;
+    *) echo "usage: script/test [--quick] [--bench]" >&2; exit 2 ;;
+  esac
+done
+
+TS=${TREE_SITTER:-}
+if [[ -z "$TS" ]]; then
+  for candidate in node_modules/.bin/tree-sitter .devtools/node_modules/.bin/tree-sitter; do
+    [[ -x "$candidate" ]] && TS=$candidate && break
+  done
+fi
+TS=${TS:-tree-sitter}
+PYTHON=${PYTHON:-}
+if [[ -z "$PYTHON" ]]; then
+  [[ -x .devtools/venv/bin/python ]] && PYTHON=.devtools/venv/bin/python || PYTHON=python3
+fi
+
+step() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
+
+step "generate is reproducible"
+before=$(cat src/parser.c src/grammar.json src/node-types.json | shasum -a 256)
+"$TS" generate --abi 14
+after=$(cat src/parser.c src/grammar.json src/node-types.json | shasum -a 256)
+if [[ "$before" != "$after" ]]; then
+  echo "src/ is out of date with grammar.js: commit the output of 'npm run generate'" >&2
+  exit 1
+fi
+
+step "corpus (tree-sitter test)"
+"$TS" test
+
+step "node types documented (docs/node-types.md)"
+"$PYTHON" script/node-types --check
+
+step "vendored sources and fixtures match their locks"
+"$PYTHON" script/verify-vendor
+
+step "bindings are current"
+"$PYTHON" setup.py -q build_ext --inplace >/dev/null 2>&1
+npx --yes node-gyp rebuild >/dev/null 2>&1
+
+step "fixture bundles parse without ERROR"
+failed=0
+while IFS= read -r -d '' f; do
+  if ! "$TS" parse --quiet "$f" >/dev/null 2>&1; then
+    echo "  $f"; failed=1
+  fi
+done < <(find test/fixtures/bundles -name '*.md' ! -name LICENSE.md -print0)
+[[ $failed == 0 ]] || { echo "fixtures with ERROR/MISSING nodes (above)" >&2; exit 1; }
+
+step "upstream markdown corpus (script/diff-upstream)"
+"$PYTHON" script/diff-upstream
+
+step "frontmatter values vs PyYAML (script/diff-yaml)"
+"$PYTHON" script/diff-yaml
+
+step "query fixtures (script/test-queries)"
+"$PYTHON" script/test-queries
+
+step "host helpers: Node reference, Node tests, Python port"
+node script/helpers-fixtures.js
+node --test bindings/node/*_test.js
+"$PYTHON" -m unittest discover -s bindings/python/tests
+
+step "property suite (script/property-test)"
+"$PYTHON" script/property-test --seed 1
+if [[ $quick == 0 ]]; then
+  for seed in 2 3 20260922; do
+    "$PYTHON" script/property-test --seed "$seed" --mutations 40 --edits 20
+  done
+fi
+
+if [[ $bench == 1 ]]; then
+  step "benchmark (script/bench)"
+  "$PYTHON" script/bench
+fi
+
+step "all suites passed"

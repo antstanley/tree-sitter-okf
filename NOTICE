@@ -1,0 +1,27 @@
+tree-sitter-okf
+Copyright (c) 2026 tree-sitter-okf contributors
+Licensed under the MIT License (see LICENSE).
+
+This project includes third-party material:
+
+1. tree-sitter-markdown
+   https://github.com/tree-sitter-grammars/tree-sitter-markdown
+   Copyright (c) 2021 Matthias Deiml
+   Licensed under the MIT License (vendor/tree-sitter-markdown/LICENSE).
+
+   The markdown rules in grammar/block.js, grammar/inline.js and
+   grammar/common.js, the markdown half of src/scanner.c, and the files in
+   vendor/tree-sitter-markdown/ are derived from or copied from this project
+   at commit a0a00f817d02412bd92c54d316f164d827b57b5c.  The changes are
+   listed in vendor/tree-sitter-markdown/MERGE.md.
+
+2. Open Knowledge Format example bundles
+   https://github.com/GoogleCloudPlatform/open-knowledge-format
+   Copyright 2026 Google LLC
+   Licensed under the Apache License, Version 2.0
+   (test/fixtures/bundles/LICENSE.md).
+
+   The files in test/fixtures/bundles/ are unmodified copies of the
+   `bundles/` directory at commit ad30107c31c06aec8a7d5636e0d1058118604e6f,
+   used as test fixtures only.  They are not part of the distributed
+   packages.  test/fixtures/bundles/LOCK.json records each file's SHA-256.

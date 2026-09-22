@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Document status** | Draft v0.1 — **for review** |
+| **Document status** | v1.0 — **implemented** in parser 1.0.0. Decisions and open questions are resolved in [Appendix D](#appendix-d--resolutions-in-100) |
 | **Target format** | Open Knowledge Format (OKF) v0.2 |
 | **Upstream spec** | [GoogleCloudPlatform/open-knowledge-format `SPEC.md`](https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/main/SPEC.md) — Apache-2.0, pinned at [`ad30107`](https://github.com/GoogleCloudPlatform/open-knowledge-format/commit/ad30107c31c06aec8a7d5636e0d1058118604e6f) |
 | **Target toolchain** | tree-sitter CLI ≥ 0.25 (0.27.0 current), JSON ABI 14/15 |
@@ -738,3 +738,57 @@ module.exports = grammar({
 **Measurement artefacts used for Appendix A**
 
 * `script/corpus-stats` — committed with this spec; run it against `test/fixtures/bundles` after `script/sync-fixtures` clones the bundles at `ad30107`. Every table in this appendix is its output.
+
+---
+
+## Appendix D — Resolutions in 1.0.0
+
+How each decision and open question was settled in the implementation.
+Where the implementation departs from the text above, the departure and its
+reason are recorded here. The text above is left as reviewed.
+
+### Decisions
+
+| | Resolution |
+|---|---|
+| **D1** | (c): one grammar for the whole document. |
+| **D2** | (c): native OKF-YAML with a never-fail `yaml_unsupported` fallback, plus the opt-in `queries/injections-fullyaml.scm`. The subset is normative in `docs/okf-yaml.md`, and `script/diff-yaml` differentially tests it against PyYAML. |
+| **D3** | (b): scalars are untyped spans. Typing is `queries/okf/scalars.scm`. |
+| **D4** | (b): merge. Departure: `script/revendor` copies the **pristine** upstream sources into `vendor/tree-sitter-markdown/` and pins them in `vendor/tree-sitter-markdown/LOCK.json` (the §10.1 path, not `vendor/LOCK.json`). Porting upstream changes into `grammar/` and `src/scanner.c` is a reviewed manual step guided by `MERGE.md`, not an automatic three-way merge. `script/verify-vendor` (`make verify-vendor`) checks the locks. That the merged grammar still matches upstream is checked by `script/diff-upstream` (646/651 identical, 5 recorded divergences). The (c) escape hatch was not needed. |
+| **D5** | As specified. The grammar–query–host split is documented in `docs/host-helpers.md`. |
+| **D6** | No filename awareness. `classify` and the other §7.5 facts are host helpers. |
+| **D7** | Off by default and build-optional. Departure: the gate is an environment variable at generate time (`OKF_DIALECT_WIKILINK=1`, `OKF_DIALECT_TAGS=1`), because tree-sitter grammars have no feature-flag mechanism of their own. CI checks that the dialect build generates. |
+| **D8** | Graceful. An unterminated frontmatter gets `MISSING "---"`. Out-of-subset frontmatter becomes `yaml_unsupported`, localised to one line: a line deeper than its block that nothing can own is opaque, not mis-nested. The property suite asserts zero `ERROR` over fixtures and fuzzed mutations. |
+| **D9** | Supported, including the paragraph + `---` → setext H2 interaction. |
+| **D10** | Upstream names kept. Divergences are listed in `docs/node-types.md` (generated and CI-checked). |
+| **D11** | README recipes for Neovim and Helix, plus `tree-sitter.json` file types. VS Code has no tree-sitter host of its own, so it gets no recipe. |
+| **D12** | ABI 14 is generated and shipped (`npm run generate` = `tree-sitter generate --abi 14`). Developed with tree-sitter CLI 0.25. |
+
+### Open questions
+
+| | Resolution |
+|---|---|
+| **Q1** | One document. Bundle-level relations (link targets, `index.md` placement) are host concerns built on the tree. |
+| **Q2** | Editor and tool both. The highlight/locals/injection queries serve editors, and the OKF query library and host helpers serve tools. |
+| **Q3** | Opaque. Anchors, tags and aliases are leaves, and merge keys are ordinary keys. The `frontmatter()` host helper resolves an alias to an earlier anchor's value when building a plain value, and never applies merges. |
+| **Q4** | Spec-literal: the opener must be at byte offset 0 (after an optional BOM). |
+| **Q5** | Indentation decides. A `---` continuing a plain or block scalar is indented, so it is scalar content and never a delimiter (the `description: foo⏎  ---` case). A column-0 `---` always closes the block, even inside an unclosed quoted scalar or flow collection. YAML 1.2 forbids a document marker there too, and the unfinished value becomes `yaml_unsupported`. The closing delimiter is lenient about text after the dashes. |
+| **Q6** | Tabs advance to the next multiple of 8, as documented in `docs/okf-yaml.md` §4. |
+| **Q7** | Kept, gated, experimental (D7). |
+| **Q8** | `section` kept. Heading-scoped queries are in `queries/okf/sections.scm` and `computation.scm`. |
+| **Q9** | Query capture only (`@okf.field.okf_version`). The bundle-root rule is the `index-frontmatter` conformance check. |
+| **Q10** | A written spec (`docs/host-helpers.md`) and shared fixtures (`test/helpers/cases.json`), with the reference implementation in Node **and** a Python port. Both pass the same fixtures. |
+| **Q11** | `yaml_unsupported` kept. It is semver-locked from 1.0.0. If the subset grows, constructs move out of `yaml_unsupported` in a minor release. The node name itself stays. |
+| **Q12** | Neovim, Helix and the CLI on day one. |
+| **Q13** | Editor latency first, and bulk indexing is also measured. A one-character edit re-parses in under 1 ms on every fixture document. `script/bench` tracks both against `bench/baseline.json`. |
+| **Q14** | A single ABI (14). |
+| **Q15** | Vendored, pinned by SHA-256 in `test/fixtures/bundles/LOCK.json`, refreshed by `script/sync-fixtures`, and checked by `script/verify-vendor`. |
+
+### Known limitations at 1.0.0
+
+* A pipe table whose header row has no leading `|` and starts with an
+  emphasis delimiter is not recognised as a table. It parses as a
+  paragraph, without `ERROR`.
+* The §9.4(1) differential test skips frontmatter blocks that contain
+  `yaml_unsupported` or that PyYAML rejects (17 of 130 at 1.0.0).
+

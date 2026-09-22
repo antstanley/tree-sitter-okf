@@ -1,6 +1,6 @@
 {
   "name": "tree-sitter-okf",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Open Knowledge Format (OKF) grammar for tree-sitter",
   "repository": "https://github.com/antstanley/tree-sitter-okf",
   "license": "MIT",

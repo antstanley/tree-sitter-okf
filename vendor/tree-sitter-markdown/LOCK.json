@@ -1,0 +1,90 @@
+{
+  "commit": "a0a00f817d02412bd92c54d316f164d827b57b5c",
+  "files": {
+    "LICENSE": {
+      "from": "LICENSE",
+      "sha256": "52ec8a1bf8256511e2a92613e0bb41ffefba3897f16fa958d7bb28c466dd4804"
+    },
+    "block-grammar.js": {
+      "from": "tree-sitter-markdown/grammar.js",
+      "sha256": "4f0b919d97851684bdb3afc736d3d028d39e99010622cffeffa48432fbeb70c0"
+    },
+    "block-scanner.c": {
+      "from": "tree-sitter-markdown/src/scanner.c",
+      "sha256": "02834bcbaf0cf51178e74450d487cc0231b9a52541cd374527ee35cfaf17fd4a"
+    },
+    "common.js": {
+      "from": "common/common.js",
+      "sha256": "d5b0fbb4a12a0965480a06a509ae25a27fc9e47df351a10b73d4bdfaec8776b7"
+    },
+    "html_entities.json": {
+      "from": "common/html_entities.json",
+      "sha256": "108b7cf9b6b81f27f4b7afab787c83cd633b4d276823c5ec494496426d1457eb"
+    },
+    "inline-grammar.js": {
+      "from": "tree-sitter-markdown-inline/grammar.js",
+      "sha256": "7c26695331c0b8eae26b0ec305a6e91a3fe82f389b5ffac50196b2b9f2add44e"
+    },
+    "inline-scanner.c": {
+      "from": "tree-sitter-markdown-inline/src/scanner.c",
+      "sha256": "6a9647420b7260955e8bf1b8338979726347211177bb5cf3d2a9c18109655ac3"
+    },
+    "test/block/extension_minus_metadata.txt": {
+      "from": "tree-sitter-markdown/test/corpus/extension_minus_metadata.txt",
+      "sha256": "aadfcb9757abfc7132ca9e8dea5117eadae14f3f9ea70e616dcc28a3b7680dbf"
+    },
+    "test/block/extension_pipe_table.txt": {
+      "from": "tree-sitter-markdown/test/corpus/extension_pipe_table.txt",
+      "sha256": "452449c5db2eb744fbda7da56d4509832209d8c5c676182ce50ca20a4c546a2d"
+    },
+    "test/block/extension_plus_metadata.txt": {
+      "from": "tree-sitter-markdown/test/corpus/extension_plus_metadata.txt",
+      "sha256": "0648b3367548d52ac5e85d3e232063ff8679f04f105d3f19566db2860627cfd9"
+    },
+    "test/block/extension_task_list.txt": {
+      "from": "tree-sitter-markdown/test/corpus/extension_task_list.txt",
+      "sha256": "0f990354144da5e565ee7b1b43d21f88d83221e78ff72760de80b0f0f3644128"
+    },
+    "test/block/failing.txt": {
+      "from": "tree-sitter-markdown/test/corpus/failing.txt",
+      "sha256": "4482be2d94fd284304c3ce3841bcb77674d03e531a767f90ecc31184c546eeb0"
+    },
+    "test/block/issues.txt": {
+      "from": "tree-sitter-markdown/test/corpus/issues.txt",
+      "sha256": "4107e0217732ce3fa2581ddda1f56fa15fa74a3286941f136ceaa53021b7b6ce"
+    },
+    "test/block/spec.txt": {
+      "from": "tree-sitter-markdown/test/corpus/spec.txt",
+      "sha256": "d0204bb9da72db35448e03b60bcafce8b820dfcab029a11c8ea44a12e2cb1017"
+    },
+    "test/inline/extension_latex.txt": {
+      "from": "tree-sitter-markdown-inline/test/corpus/extension_latex.txt",
+      "sha256": "18148d26df867acf35f91835625ffdd5752e8bfbac4e442200af96c3ddd50e56"
+    },
+    "test/inline/extension_strikethrough.txt": {
+      "from": "tree-sitter-markdown-inline/test/corpus/extension_strikethrough.txt",
+      "sha256": "ffb919a12d7a113eaa53f3e03a00d1260145063e024d36c4a0985b44a3a60ff1"
+    },
+    "test/inline/extension_wikilink.txt": {
+      "from": "tree-sitter-markdown-inline/test/corpus/extension_wikilink.txt",
+      "sha256": "afc1ae6098b8ddf3edd35ea890a5c6dd7f468164a39023fa4d6e3411c11d2692"
+    },
+    "test/inline/failing.txt": {
+      "from": "tree-sitter-markdown-inline/test/corpus/failing.txt",
+      "sha256": "6ad7bbfad64ce18700aeef90a78f997e1bc844011c54dbedd75bc256d042c34c"
+    },
+    "test/inline/issues.txt": {
+      "from": "tree-sitter-markdown-inline/test/corpus/issues.txt",
+      "sha256": "c833d421aaf4755bb203974fb648020113f734fa55841c6d396a3d1483d31d18"
+    },
+    "test/inline/spec.txt": {
+      "from": "tree-sitter-markdown-inline/test/corpus/spec.txt",
+      "sha256": "8cd4364ae5c0ce3a690e885b46acee9c0f8c23ddebe76bb5108eb3748fb8ccb8"
+    },
+    "test/inline/tags.txt": {
+      "from": "tree-sitter-markdown-inline/test/corpus/tags.txt",
+      "sha256": "57506f8690d826f124784e57b3b16b06ab07cfbfc04c37f4c2348fc01ac5a0fc"
+    }
+  },
+  "upstream": "https://github.com/tree-sitter-grammars/tree-sitter-markdown"
+}

@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+"""Check vendored and fixture files against their locks (spec §9.2, §9.6).
+
+Fails if a file listed in vendor/tree-sitter-markdown/LOCK.json or
+test/fixtures/bundles/LOCK.json is missing or modified, or if a file in
+those trees is not covered by its lock.  Offline: `script/revendor` and
+`script/sync-fixtures` are the only way to change the locked files.
+
+Usage: script/verify-vendor
+"""
+
+import os
+import sys
+
+import _lock
+
+LOCKS = [
+    os.path.join(_lock.ROOT, "vendor", "tree-sitter-markdown", "LOCK.json"),
+    os.path.join(_lock.ROOT, "test", "fixtures", "bundles", "LOCK.json"),
+]
+
+# Files in the locked trees that are ours, not upstream's.
+OWN = {"LOCK.json", "MERGE.md"}
+
+
+def main():
+    failed = False
+    for path in LOCKS:
+        lock, problems = _lock.verify(path, tracked=lambda local: local not in OWN)
+        rel = os.path.relpath(path, _lock.ROOT)
+        for p in problems:
+            print(f"  {p}")
+        print(f"{rel}: {len(lock['files'])} files @ {lock['commit'][:12]}, "
+              f"{len(problems)} problems")
+        failed = failed or bool(problems)
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

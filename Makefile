@@ -4,7 +4,7 @@ endif
 
 LANGUAGE_NAME := tree-sitter-okf
 HOMEPAGE_URL := https://github.com/antstanley/tree-sitter-okf
-VERSION := 0.1.0
+VERSION := 1.0.0
 
 # repository
 SRC_DIR := src
@@ -67,7 +67,7 @@ $(LANGUAGE_NAME).pc: bindings/c/$(LANGUAGE_NAME).pc.in
 		-e 's|@CMAKE_INSTALL_PREFIX@|$(PREFIX)|' $< > $@
 
 $(PARSER): $(SRC_DIR)/grammar.json
-	$(TS) generate $^
+	$(TS) generate --abi 14 $^
 
 install: all
 	install -d '$(DESTDIR)$(DATADIR)'/tree-sitter/queries/okf '$(DESTDIR)$(INCLUDEDIR)'/tree_sitter '$(DESTDIR)$(PCLIBDIR)' '$(DESTDIR)$(LIBDIR)'
@@ -97,3 +97,17 @@ test:
 	$(TS) test
 
 .PHONY: all install uninstall clean test
+
+# Project checks (spec §10.3); script/test runs these and every other suite.
+PYTHON ?= python3
+
+check-nodes:
+	$(PYTHON) script/node-types --check
+
+verify-vendor:
+	$(PYTHON) script/verify-vendor
+
+test-all:
+	script/test
+
+.PHONY: check-nodes verify-vendor test-all

@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+"""Refresh vendor/tree-sitter-markdown from upstream (spec D4, §9.6).
+
+Copies the upstream grammar sources and test corpora at COMMIT into
+vendor/tree-sitter-markdown and rewrites its LOCK.json.  The vendored files
+are never edited: the merged grammar lives in grammar/ and src/scanner.c, and
+vendor/tree-sitter-markdown/MERGE.md lists every delta.  After a revendor,
+diff the old and new upstream sources, port what changed through MERGE.md,
+then run script/test (script/diff-upstream in particular).
+
+Usage: script/revendor [COMMIT]     (default: the commit in LOCK.json)
+"""
+
+import json
+import os
+import shutil
+import sys
+
+import _lock
+
+URL = "https://github.com/tree-sitter-grammars/tree-sitter-markdown"
+DEST = os.path.join(_lock.ROOT, "vendor", "tree-sitter-markdown")
+LOCK = os.path.join(DEST, "LOCK.json")
+
+FILES = {
+    "block-grammar.js": "tree-sitter-markdown/grammar.js",
+    "block-scanner.c": "tree-sitter-markdown/src/scanner.c",
+    "inline-grammar.js": "tree-sitter-markdown-inline/grammar.js",
+    "inline-scanner.c": "tree-sitter-markdown-inline/src/scanner.c",
+    "common.js": "common/common.js",
+    "html_entities.json": "common/html_entities.json",
+    "LICENSE": "LICENSE",
+}
+CORPORA = {
+    "test/block": "tree-sitter-markdown/test/corpus",
+    "test/inline": "tree-sitter-markdown-inline/test/corpus",
+}
+
+
+def main():
+    if len(sys.argv) > 1 and sys.argv[1].startswith("-"):
+        print(__doc__)
+        return 0
+    commit = sys.argv[1] if len(sys.argv) > 1 else json.load(open(LOCK))["commit"]
+    checkout, full = _lock.clone(URL, commit)
+    try:
+        mapping = dict(FILES)
+        for local_dir, upstream_dir in CORPORA.items():
+            shutil.rmtree(os.path.join(DEST, local_dir), ignore_errors=True)
+            for name in sorted(os.listdir(os.path.join(checkout, upstream_dir))):
+                mapping[f"{local_dir}/{name}"] = f"{upstream_dir}/{name}"
+        files = _lock.install(checkout, mapping, DEST)
+    finally:
+        shutil.rmtree(checkout)
+    _lock.write(LOCK, URL, full, files)
+    print(f"vendored {len(files)} files from {URL} @ {full}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

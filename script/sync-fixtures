@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+"""Refresh test/fixtures/bundles from the official OKF bundles (spec §9.2).
+
+Copies every `.md` file under `bundles/` of the OKF repository at COMMIT,
+plus its LICENSE.md (Apache-2.0, see NOTICE), and rewrites
+test/fixtures/bundles/LOCK.json.  Review the diff: new fixtures may need
+corpus, query or helper expectations updated (script/test says which).
+
+Usage: script/sync-fixtures [COMMIT]     (default: the commit in LOCK.json)
+"""
+
+import json
+import os
+import shutil
+import sys
+
+import _lock
+
+URL = "https://github.com/GoogleCloudPlatform/open-knowledge-format"
+DEST = os.path.join(_lock.ROOT, "test", "fixtures", "bundles")
+LOCK = os.path.join(DEST, "LOCK.json")
+
+
+def main():
+    if len(sys.argv) > 1 and sys.argv[1].startswith("-"):
+        print(__doc__)
+        return 0
+    commit = sys.argv[1] if len(sys.argv) > 1 else json.load(open(LOCK))["commit"]
+    checkout, full = _lock.clone(URL, commit)
+    try:
+        mapping = {"LICENSE.md": "LICENSE.md"}
+        base = os.path.join(checkout, "bundles")
+        for dirpath, _, names in os.walk(base):
+            for name in names:
+                if name.endswith(".md"):
+                    rel = os.path.relpath(os.path.join(dirpath, name), base).replace(os.sep, "/")
+                    mapping[rel] = "bundles/" + rel
+        for entry in os.listdir(DEST):
+            path = os.path.join(DEST, entry)
+            if os.path.isdir(path):
+                shutil.rmtree(path)
+        files = _lock.install(checkout, mapping, DEST)
+    finally:
+        shutil.rmtree(checkout)
+    _lock.write(LOCK, URL, full, files)
+    print(f"synced {len(files)} files from {URL} @ {full}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -9,3 +9,6 @@ module.exports =
 try {
   module.exports.nodeTypeInfo = require("../../src/node-types.json");
 } catch (_) {}
+
+// Host helpers: the derived facts a query cannot express (docs/host-helpers.md).
+module.exports.okf = require("./okf");
