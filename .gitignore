@@ -1,0 +1,10 @@
+node_modules/
+build/
+*.so
+*.dylib
+*.dll
+*.wasm
+*.o
+*.obj
+target/
+.DS_Store

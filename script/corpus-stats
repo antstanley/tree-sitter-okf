@@ -1,0 +1,232 @@
+#!/usr/bin/env python3
+"""Reproduce the corpus measurements in docs/grammar-spec.md Appendix A.
+
+Usage:
+    script/corpus-stats <bundle-dir> [<bundle-dir> ...]
+
+Point it at one or more OKF bundles (directories containing `*.md`).  With no
+arguments it tries `test/fixtures/bundles`.
+
+Every claim about "what OKF files actually look like" in the grammar spec should
+be reproducible from a pinned commit here, not asserted.  Keep it
+dependency-free (stdlib only) so it runs anywhere.
+"""
+
+import collections
+import glob
+import os
+import re
+import sys
+
+# ---------------------------------------------------------------- frontmatter
+
+FRONTMATTER = re.compile(r"^---\r?\n(.*?)\r?\n---(?:\r?\n|\Z)", re.S)
+# A key, at any indentation, optionally as a `- key: value` sequence-of-mappings
+# entry.  Matched against the line with leading whitespace stripped.
+PAIR = re.compile(r"^(?:-\s+)?([A-Za-z_][A-Za-z0-9_.@-]*):(.*)$")
+SEQUENCE_ITEM = re.compile(r"^(\s*)-(?:\s|$)")
+
+
+def read(path):
+    with open(path, "rb") as fh:
+        raw = fh.read()
+    return raw, raw.decode("utf-8-sig", errors="replace")
+
+
+def classify_value(value):
+    """Classify the text after `key:` into a YAML form name (or None)."""
+    if not value:
+        return "empty_value"
+    if value.startswith("{"):
+        return "flow_mapping"
+    if value.startswith("["):
+        return "flow_sequence"
+    if value[0] == "'":
+        return "single_quoted_scalar"
+    if value[0] == '"':
+        return "double_quoted_scalar"
+    if value[0] in "|>":
+        return "block_scalar"
+    if value[0] in "&*!":
+        return "anchor_alias_tag"
+    if re.fullmatch(r"-?\d+", value):
+        return "integer_scalar"
+    if re.search(r"(?:^|\s)#", value):
+        return "plain_scalar_with_trailing_comment"
+    return "plain_scalar"
+
+
+def scan_frontmatter(body):
+    """Return (top_level_keys, forms) found in a frontmatter block."""
+    keys = collections.Counter()
+    forms = collections.Counter()
+    lines = body.split("\n")
+    previous_key_indent = None
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        indent = len(line) - len(line.lstrip())
+        m = PAIR.match(stripped)
+        if m:
+            name, raw_value = m.group(1), m.group(2).strip()
+            if stripped.startswith("- "):
+                forms["block_sequence_of_mappings"] += 1
+            elif indent == 0:
+                keys[name] += 1
+            forms["key:any_indent"] += 1
+            forms[classify_value(raw_value)] += 1
+            # multi-line plain scalar: the next non-blank line is indented and
+            # is neither a key nor a sequence entry.
+            previous_key_indent = indent
+            continue
+        if SEQUENCE_ITEM.match(line):
+            forms["block_sequence_item"] += 1
+            if previous_key_indent is not None and indent == previous_key_indent:
+                forms["block_sequence_zero_indent"] += 1
+            entry = stripped.split("-", 1)[1].strip()
+            if entry.startswith("{"):
+                forms["flow_mapping"] += 1
+            elif entry.startswith("["):
+                forms["flow_sequence"] += 1
+            continue
+        # a continuation line (multi-line plain scalar / block scalar body)
+        if previous_key_indent is not None and indent > previous_key_indent:
+            forms["scalar_continuation"] += 1
+    return keys, forms
+
+
+# ---------------------------------------------------------------------- body
+
+FENCE = re.compile(r"^\s*(```+|~~~+)\s*(\S*)")
+
+
+def scan_body(text):
+    forms = collections.Counter()
+    in_fence = False
+    for line in text.split("\n"):
+        m = FENCE.match(line)
+        if m:
+            if in_fence:
+                in_fence = False
+                forms["fence_close"] += 1
+            else:
+                in_fence = True
+                lang = m.group(2)
+                forms["fence_open"] += 1
+                forms["fence_lang:" + (lang or "(none)")] += 1
+                if line[: len(line) - len(line.lstrip())]:
+                    forms["fence_indented"] += 1
+            continue
+        if in_fence:
+            continue
+        if re.match(r"^#{1,6} ", line):
+            forms["atx_h" + str(len(re.match(r"^(#+)", line).group(1)))] += 1
+        elif re.match(r"^\s*\|", line):
+            forms["pipe_table_line"] += 1
+            if re.match(r"^[\s|:-]+$", line):
+                forms["pipe_table_delimiter_line"] += 1
+        elif re.match(r"^>", line):
+            forms["block_quote"] += 1
+        elif re.match(r"^\s*[-*+] ", line):
+            forms["bullet_item"] += 1
+        elif re.match(r"^\s*\d+[.)] ", line):
+            forms["ordered_item"] += 1
+        elif re.match(r"^ {4}\S", line):
+            # NOTE: a 4-space-indented line is an indented code block only once
+            # the surrounding list/fence context is known; this counts the
+            # *candidate* lines and over-reports.  See Appendix A.
+            forms["indent4_body_line"] += 1
+        elif re.match(r"^\[\^[^\]]+\]:", line):
+            forms["footnote_definition"] += 1
+        elif re.match(r"^\[[^\]^][^\]]*\]:", line):
+            forms["link_reference_definition"] += 1
+        elif line.startswith("<"):
+            forms["html_like"] += 1
+        for pattern, name in INLINE_PROBES:
+            forms[name] += len(re.findall(pattern, line))
+        scan_line_extras(line, forms)
+    return forms
+
+
+INLINE_PROBES = [
+    (r"\]\((/[^)\s]*)", "link_bundle_relative"),
+    (r"\]\((https?://[^)\s]*)", "link_uri"),
+    (r"\]\((\.\.?/[^)\s]*)", "link_relative"),
+    (r"\]\(#", "link_fragment"),
+    (r"!\[[^\]]*\]\(", "image"),
+    (r"\[\^[^\]]+\](?!:)", "footnote_reference"),
+    (r"`[^`\n]+`", "code_span"),
+    (r"\*\*[^*\n]+\*\*", "strong_emphasis"),
+    (r"(?<!\*)\*[^*\s\n][^*\n]*\*(?!\*)", "emphasis"),
+    (r"\[\[[^\]\n]+\]\]", "wikilink"),
+    (r"(?<![\w#])#[A-Za-z][\w-]{2,}", "hashtag"),
+    (r"<https?://[^>\s]+>", "autolink"),
+    (r"&[a-z]{2,8};|&#\d+;", "entity_reference"),
+]
+
+
+def scan_line_extras(line, forms):
+    if line.endswith("  ") and line.strip():
+        forms["hard_line_break_two_spaces"] += 1
+    if line.endswith("\\") and line.strip():
+        forms["hard_line_break_backslash"] += 1
+    if not line.isascii() and line.strip():
+        forms["non_ascii_line"] += 1
+    if "\t" in line:
+        forms["tab_in_line"] += 1
+
+
+# --------------------------------------------------------------------- driver
+
+
+def main(argv):
+    roots = [r for r in (argv[1:] or ["test/fixtures/bundles"]) if os.path.isdir(r)]
+    if not roots:
+        print(__doc__.strip(), file=sys.stderr)
+        return 2
+
+    files = []
+    for root in roots:
+        files.extend(sorted(glob.glob(os.path.join(root, "**", "*.md"), recursive=True)))
+
+    keys = collections.Counter()
+    yaml_forms = collections.Counter()
+    body_forms = collections.Counter()
+    totals = collections.Counter()
+
+    for path in files:
+        raw, text = read(path)
+        totals["files"] += 1
+        if raw.startswith(b"\xef\xbb\xbf"):
+            totals["bom"] += 1
+        if b"\r\n" in raw:
+            totals["crlf"] += 1
+        match = FRONTMATTER.match(text)
+        if match is None:
+            totals["files_without_frontmatter"] += 1
+        else:
+            totals["files_with_frontmatter"] += 1
+            k, f = scan_frontmatter(match.group(1))
+            keys.update(k)
+            yaml_forms.update(f)
+            text = text[match.end() :]
+        body_forms.update(scan_body(text))
+
+    def dump(title, counter):
+        print("\n## %s" % title)
+        for name, count in counter.most_common():
+            print("  %5d  %s" % (count, name))
+
+    print("# Corpus stats over %d file(s)" % totals["files"])
+    print("  roots: %s" % ", ".join(roots))
+    dump("totals", totals)
+    dump("frontmatter keys", keys)
+    dump("frontmatter YAML forms", yaml_forms)
+    dump("body forms", body_forms)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))

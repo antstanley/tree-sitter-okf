@@ -1,0 +1,68 @@
+{
+  "name": "tree-sitter-okf",
+  "version": "0.1.0",
+  "description": "Open Knowledge Format (OKF) grammar for tree-sitter",
+  "repository": "https://github.com/tree-sitter-okf/tree-sitter-okf",
+  "license": "MIT",
+  "keywords": [
+    "tree-sitter",
+    "parser",
+    "lexer",
+    "okf",
+    "open-knowledge-format",
+    "markdown",
+    "frontmatter"
+  ],
+  "main": "bindings/node",
+  "types": "bindings/node/index.d.ts",
+  "files": [
+    "grammar.js",
+    "queries",
+    "src/grammar.json",
+    "src/node-types.json",
+    "src/parser.c",
+    "src/scanner.c",
+    "bindings/node/index.js",
+    "bindings/node/index.d.ts",
+    "bindings/node/binding.cc",
+    "bindings/node/binding.gyp",
+    "bindings/c/tree_sitter/tree-sitter-okf.h"
+  ],
+  "tree-sitter": [
+    {
+      "scope": "source.okf",
+      "file-types": [
+        "md",
+        "markdown"
+      ],
+      "highlights": "queries/highlights.scm",
+      "injections": "queries/injections.scm",
+      "locals": "queries/locals.scm",
+      "tags": "queries/tags.scm"
+    }
+  ],
+  "scripts": {
+    "generate": "tree-sitter generate",
+    "build": "tree-sitter build",
+    "test": "tree-sitter test",
+    "test:all": "script/test",
+    "install": "node-gyp-build",
+    "prestart": "tree-sitter build --wasm",
+    "start": "tree-sitter playground"
+  },
+  "dependencies": {
+    "node-addon-api": "^8.0.0",
+    "node-gyp-build": "^4.8.0"
+  },
+  "peerDependencies": {
+    "tree-sitter": "^0.25.0"
+  },
+  "peerDependenciesMeta": {
+    "tree-sitter": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "tree-sitter-cli": "^0.25.0"
+  }
+}

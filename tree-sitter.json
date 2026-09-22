@@ -1,0 +1,43 @@
+{
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
+  "grammars": [
+    {
+      "name": "okf",
+      "camelcase": "Okf",
+      "title": "OKF",
+      "scope": "source.okf",
+      "file-types": [
+        "md",
+        "markdown"
+      ],
+      "injection-regex": "^okf$",
+      "class-name": "TreeSitterOkf",
+      "highlights": "queries/highlights.scm",
+      "injections": "queries/injections.scm",
+      "locals": "queries/locals.scm",
+      "tags": "queries/tags.scm"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "Open Knowledge Format (OKF) grammar for tree-sitter: markdown concept documents with YAML frontmatter",
+    "authors": [
+      {
+        "name": "tree-sitter-okf contributors"
+      }
+    ],
+    "links": {
+      "repository": "https://github.com/tree-sitter-okf/tree-sitter-okf",
+      "okf-specification": "https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/main/SPEC.md"
+    }
+  },
+  "bindings": {
+    "c": true,
+    "go": true,
+    "node": true,
+    "python": true,
+    "rust": true,
+    "swift": false
+  }
+}
