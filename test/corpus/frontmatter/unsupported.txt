@@ -1,0 +1,291 @@
+================================================================================
+Explicit keys are out of subset (spec 5.1)
+================================================================================
+---
+? complex key
+: complex value
+type: Metric
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (yaml_unsupported)
+    (yaml_unsupported)
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+A mapping value inside a plain value
+================================================================================
+---
+title: Revenue: gross
+type: Metric
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (yaml_unsupported))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+A sequence entry among mapping entries
+================================================================================
+---
+type: Metric
+- stray
+title: Revenue
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (yaml_unsupported)
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+A mapping entry among sequence entries
+================================================================================
+---
+tags:
+  - a
+  key: value
+  - b
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (plain_scalar))
+          (yaml_unsupported)
+          (block_sequence_item
+            (plain_scalar))))))
+  body: (body))
+
+================================================================================
+An unbalanced flow collection
+================================================================================
+---
+tags: [a, b
+title: Revenue
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (yaml_unsupported))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+An unterminated quoted scalar
+================================================================================
+---
+title: "Revenue
+type: Metric
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (yaml_unsupported))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+An escaped line break in a double-quoted scalar
+================================================================================
+---
+title: "Revenue \
+  gross"
+type: Metric
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (yaml_unsupported))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+A line with no key in a mapping
+================================================================================
+---
+type: Metric
+just some words
+title: Revenue
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (yaml_unsupported)
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Text after a quoted value
+================================================================================
+---
+title: "Revenue" extra
+type: Metric
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (yaml_unsupported))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Reserved indicators
+================================================================================
+---
+a: @reserved
+b: `backtick
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (yaml_unsupported))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (yaml_unsupported))))
+  body: (body))
+
+================================================================================
+A directive line
+================================================================================
+---
+%YAML 1.2
+type: Metric
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (yaml_directive)
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Over-indented sibling is mis-nested, not an error
+================================================================================
+---
+type: Metric
+    title: Revenue
+status: stable
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Tab indentation (spec Q6)
+================================================================================
+---
+generated:
+	by: agent
+	at: now
+type: Metric
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_mapping
+          (block_mapping_pair
+            key: (plain_scalar)
+            value: (plain_scalar))
+          (block_mapping_pair
+            key: (plain_scalar)
+            value: (plain_scalar))))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))

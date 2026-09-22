@@ -1,0 +1,255 @@
+================================================================================
+Cross-links in the three path forms (OKF 6.1)
+================================================================================
+See [a](/metrics/revenue.md), [b](./revenue.md), [c](../tables/orders.md) and [d](revenue.md).
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline
+        (inline_link
+          (link_text)
+          (link_destination))
+        (inline_link
+          (link_text)
+          (link_destination))
+        (inline_link
+          (link_text)
+          (link_destination))
+        (inline_link
+          (link_text)
+          (link_destination))))))
+
+================================================================================
+External and fragment links
+================================================================================
+[docs](https://example.com/x?y=1) and [anchor](#schema)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline
+        (inline_link
+          (link_text)
+          (link_destination))
+        (inline_link
+          (link_text)
+          (link_destination))))))
+
+================================================================================
+Code span inside link text (Appendix A)
+================================================================================
+[`computations/revenue-ytd.md`](./revenue-ytd.md)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline
+        (inline_link
+          (link_text
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter)))
+          (link_destination))))))
+
+================================================================================
+Link with a title
+================================================================================
+[x](./x.md "The X")
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline
+        (inline_link
+          (link_text)
+          (link_destination)
+          (link_title))))))
+
+================================================================================
+Reference links
+================================================================================
+[full][ref], [collapsed][] and [shortcut].
+
+[ref]: ./a.md
+[collapsed]: ./b.md
+[shortcut]: ./c.md
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline
+        (full_reference_link
+          (link_text)
+          (link_label))
+        (collapsed_reference_link
+          (link_text))
+        (shortcut_link
+          (link_text))))
+    (link_reference_definition
+      (link_label)
+      (link_destination))
+    (link_reference_definition
+      (link_label)
+      (link_destination))
+    (link_reference_definition
+      (link_label)
+      (link_destination))))
+
+================================================================================
+Images
+================================================================================
+![alt text](./chart.png "Chart")
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline
+        (image
+          (image_description)
+          (link_destination)
+          (link_title))))))
+
+================================================================================
+Autolinks
+================================================================================
+<https://example.com> and <owner@example.com>
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline
+        (uri_autolink)
+        (email_autolink)))))
+
+================================================================================
+Emphasis, strong emphasis and strikethrough
+================================================================================
+*em* _em_ **strong** __strong__ ~~gone~~ ***both***
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline
+        (emphasis
+          (emphasis_delimiter)
+          (emphasis_delimiter))
+        (emphasis
+          (emphasis_delimiter)
+          (emphasis_delimiter))
+        (strong_emphasis
+          (emphasis_delimiter)
+          (emphasis_delimiter)
+          (emphasis_delimiter)
+          (emphasis_delimiter))
+        (strong_emphasis
+          (emphasis_delimiter)
+          (emphasis_delimiter)
+          (emphasis_delimiter)
+          (emphasis_delimiter))
+        (strikethrough
+          (emphasis_delimiter)
+          (strikethrough
+            (emphasis_delimiter)
+            (emphasis_delimiter))
+          (emphasis_delimiter))
+        (emphasis
+          (emphasis_delimiter)
+          (strong_emphasis
+            (emphasis_delimiter)
+            (emphasis_delimiter)
+            (emphasis_delimiter)
+            (emphasis_delimiter))
+          (emphasis_delimiter))))))
+
+================================================================================
+Emphasis in a table-like context
+================================================================================
+*event_params.key* and snake_case_words
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline
+        (emphasis
+          (emphasis_delimiter)
+          (emphasis_delimiter))))))
+
+================================================================================
+Hard line breaks
+================================================================================
+two spaces  
+backslash\
+end
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline
+        (hard_line_break)
+        (hard_line_break)))))
+
+================================================================================
+Backslash escapes and entities
+================================================================================
+\*not em\* &amp; &copy; &#169; &#xA9;
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline
+        (backslash_escape)
+        (backslash_escape)
+        (entity_reference)
+        (entity_reference)
+        (numeric_character_reference)
+        (numeric_character_reference)))))
+
+================================================================================
+Inline html
+================================================================================
+a <span class="x">b</span> <!-- note --> c
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline
+        (html_tag)
+        (html_tag)
+        (html_tag)))))
+
+================================================================================
+Non-ASCII text
+================================================================================
+Revenue — net of returns, café, 収益
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline))))

@@ -1,0 +1,225 @@
+================================================================================
+Schema table (OKF 4.2)
+================================================================================
+# Schema
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `order_id` | STRING | *Primary key* |
+| `amount` | NUMERIC(18,4) | Net amount |
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline))
+      (pipe_table
+        (pipe_table_header
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_delimiter_row
+          (pipe_table_delimiter_cell)
+          (pipe_table_delimiter_cell)
+          (pipe_table_delimiter_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter))))
+        (pipe_table_row
+          (pipe_table_cell
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell))))))
+
+================================================================================
+Alignment row
+================================================================================
+| L | C | R |
+|:--|:-:|--:|
+| 1 | 2 | 3 |
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (pipe_table
+      (pipe_table_header
+        (pipe_table_cell)
+        (pipe_table_cell)
+        (pipe_table_cell))
+      (pipe_table_delimiter_row
+        (pipe_table_delimiter_cell
+          (pipe_table_align_left))
+        (pipe_table_delimiter_cell
+          (pipe_table_align_left)
+          (pipe_table_align_right))
+        (pipe_table_delimiter_cell
+          (pipe_table_align_right)))
+      (pipe_table_row
+        (pipe_table_cell)
+        (pipe_table_cell)
+        (pipe_table_cell)))))
+
+================================================================================
+Empty and blank cells keep column indexes
+================================================================================
+| a | b | c |
+|---|---|---|
+|| x |   |
+| y | | |
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (pipe_table
+      (pipe_table_header
+        (pipe_table_cell)
+        (pipe_table_cell)
+        (pipe_table_cell))
+      (pipe_table_delimiter_row
+        (pipe_table_delimiter_cell)
+        (pipe_table_delimiter_cell)
+        (pipe_table_delimiter_cell))
+      (pipe_table_row
+        (pipe_table_cell)
+        (pipe_table_cell)
+        (pipe_table_cell))
+      (pipe_table_row
+        (pipe_table_cell)
+        (pipe_table_cell)
+        (pipe_table_cell)))))
+
+================================================================================
+Rows without outer pipes
+================================================================================
+a | b
+--|--
+1 | 2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (pipe_table
+      (pipe_table_header
+        (pipe_table_cell)
+        (pipe_table_cell))
+      (pipe_table_delimiter_row
+        (pipe_table_delimiter_cell)
+        (pipe_table_delimiter_cell))
+      (pipe_table_row
+        (pipe_table_cell)
+        (pipe_table_cell)))))
+
+================================================================================
+Escaped pipe in a cell
+================================================================================
+| a |
+|---|
+| x \| y |
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (pipe_table
+      (pipe_table_header
+        (pipe_table_cell))
+      (pipe_table_delimiter_row
+        (pipe_table_delimiter_cell))
+      (pipe_table_row
+        (pipe_table_cell
+          (backslash_escape))))))
+
+================================================================================
+Table ends at a blank line
+================================================================================
+| a |
+|---|
+| 1 |
+
+After
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (pipe_table
+      (pipe_table_header
+        (pipe_table_cell))
+      (pipe_table_delimiter_row
+        (pipe_table_delimiter_cell))
+      (pipe_table_row
+        (pipe_table_cell)))
+    (paragraph
+      (inline))))
+
+================================================================================
+A lone pipe line without a delimiter row is a paragraph
+================================================================================
+| not | a | table |
+next line
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline))))
+
+================================================================================
+Table after a paragraph line
+================================================================================
+Intro
+| a | b |
+|---|---|
+| 1 | 2 |
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline))
+    (pipe_table
+      (pipe_table_header
+        (pipe_table_cell)
+        (pipe_table_cell))
+      (pipe_table_delimiter_row
+        (pipe_table_delimiter_cell)
+        (pipe_table_delimiter_cell))
+      (pipe_table_row
+        (pipe_table_cell)
+        (pipe_table_cell)))))
+
+================================================================================
+Single column table
+================================================================================
+| only |
+|------|
+| one |
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (pipe_table
+      (pipe_table_header
+        (pipe_table_cell))
+      (pipe_table_delimiter_row
+        (pipe_table_delimiter_cell))
+      (pipe_table_row
+        (pipe_table_cell)))))

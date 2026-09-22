@@ -680,9 +680,22 @@ static bool code_span_closer_ahead(Scanner *s, TSLexer *lexer, uint8_t level) {
                     return false;
                 }
             }
-            if (!line_certainly_continues(s, lexer)) return false;
             on_continuation_line = true;
             line_has_pipe = false;
+            // A continuation line may itself start with a backtick run: the
+            // closer, unless it is long enough to be a fence.
+            while (is_blank(lexer->lookahead)) advance(s, lexer);
+            if (lexer->lookahead == '`') {
+                size_t run = 0;
+                while (lexer->lookahead == '`') {
+                    run++;
+                    advance(s, lexer);
+                }
+                if (run >= 3) return false;
+                close_level = run;
+                continue;
+            }
+            if (!line_certainly_continues(s, lexer)) return false;
             continue;
         }
         if (c == '|' && on_continuation_line) line_has_pipe = true;
@@ -2274,7 +2287,14 @@ static bool fm_plain(Scanner *s, TSLexer *lexer, const bool *valid_symbols,
                 if (fm_document_marker(lexer, marker)) break;
                 lexer->mark_end(lexer);
             }
+            // The line folds in unless it reads as `key: value`, which is
+            // not YAML either way but is far more useful kept as an entry.
+            // So nothing on it is marked until that is known; a key-like
+            // line leaves the token ending on the previous line.  (Trailing
+            // whitespace before a comment on a folded line ends up in the
+            // token: the price of not being able to mark backwards.)
             bool stop = false;
+            bool key_like = false;
             pending_ws = false;
             while (!fm_at_eol(lexer)) {
                 int32_t c = lexer->lookahead;
@@ -2288,9 +2308,14 @@ static bool fm_plain(Scanner *s, TSLexer *lexer, const bool *valid_symbols,
                     break;
                 }
                 fm_advance(lexer);
-                lexer->mark_end(lexer);
+                if (c == ':' && (is_blank(lexer->lookahead) || fm_at_eol(lexer))) {
+                    key_like = true;
+                    break;
+                }
                 pending_ws = false;
             }
+            if (key_like) break;
+            lexer->mark_end(lexer);
             if (stop) break;
         }
     }

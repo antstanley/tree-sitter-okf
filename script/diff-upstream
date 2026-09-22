@@ -1,0 +1,278 @@
+#!/usr/bin/env python3
+"""Differential test: our body grammar vs. upstream tree-sitter-markdown.
+
+Spec §9.4(2) and the M0 exit criterion ("upstream markdown corpus tests pass
+through our grammar").  Runs every test case of the vendored upstream corpora
+(vendor/tree-sitter-markdown/test/{block,inline}) through *our* parser and
+compares the result with upstream's expected tree, after normalising the
+differences that are structural by design:
+
+  block tests   our `(source_file (body ...))` becomes upstream's
+                `(document (section ...))`; inline-layer nodes inside `inline`
+                and `pipe_table_cell` are dropped (upstream parses inlines in a
+                second grammar), keeping their `block_continuation`s.
+  inline tests  the children of every `inline` node in the document are
+                concatenated into one `(inline ...)`; `block_continuation`
+                nodes are dropped (upstream's injection strips them).
+
+Field names are ignored on both sides, as `tree-sitter test` does when the
+expected tree has none.
+
+A case that differs must be listed, with a reason, in
+test/upstream-divergences.txt (`<corpus>/<file>: <test name>  # reason`).  The
+script fails on any unlisted difference and on any listed one that no longer
+differs, so the divergence list cannot go stale.
+
+Usage: script/diff-upstream [-v] [--only SUBSTRING]
+Needs the Python binding: `pip install -e .` (see CONTRIBUTING.md).
+"""
+
+import argparse
+import os
+import re
+import sys
+
+import tree_sitter
+import tree_sitter_okf
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+VENDOR = os.path.join(ROOT, "vendor", "tree-sitter-markdown", "test")
+DIVERGENCES = os.path.join(ROOT, "test", "upstream-divergences.txt")
+
+# Corpus files that exercise upstream features OKF replaces or turns off
+# (spec D2, D7): the metadata extensions are replaced by OKF frontmatter, and
+# LaTeX / wiki links / tags are dialects that are off for OKF v0.2.
+SKIPPED_FILES = {
+    "block/extension_minus_metadata.txt",
+    "block/extension_plus_metadata.txt",
+    "inline/extension_latex.txt",
+    "inline/extension_wikilink.txt",
+    "inline/tags.txt",
+}
+
+HEADER = re.compile(r"^(={3,})\n(.*?)\n\1\n", re.M | re.S)
+
+
+def parse_corpus(path):
+    """Yield (name, attributes, input, expected) from a tree-sitter test file."""
+    text = open(path, encoding="utf-8").read()
+    headers = list(HEADER.finditer(text))
+    for i, m in enumerate(headers):
+        name_block = m.group(2).split("\n")
+        name = name_block[0].strip()
+        attributes = [line.strip() for line in name_block[1:] if line.strip()]
+        body_end = headers[i + 1].start() if i + 1 < len(headers) else len(text)
+        body = text[m.end():body_end]
+        # the divider is the last dash line: inputs may contain `---` lines,
+        # expected trees never do
+        dashes = list(re.finditer(r"^-{3,}\n", body, re.M))
+        if not dashes:
+            continue
+        dash = dashes[-1]
+        source = body[: dash.start()]
+        expected = body[dash.end():].strip()
+        # tree-sitter strips exactly one trailing newline from the input
+        if source.endswith("\n"):
+            source = source[:-1]
+        yield name, attributes, source, expected
+
+
+def tokenize(sexp):
+    return re.findall(r"\(|\)|[^\s()]+", sexp)
+
+
+def parse_sexp(sexp):
+    """Parse an S-expression into (type, [children]), dropping field names."""
+    tokens = tokenize(sexp)
+    pos = 0
+
+    def node():
+        nonlocal pos
+        assert tokens[pos] == "(", tokens[pos:pos + 5]
+        pos += 1
+        kind = tokens[pos]
+        pos += 1
+        if kind == "MISSING":
+            kind = "MISSING " + tokens[pos]
+            pos += 1
+        children = []
+        while tokens[pos] != ")":
+            if tokens[pos].endswith(":"):
+                pos += 1  # field name
+                continue
+            children.append(node())
+        pos += 1
+        return (kind, children)
+
+    return node()
+
+
+def to_tree(ts_node):
+    """Our parse tree as (type, [children]) over named nodes only."""
+    children = [to_tree(c) for c in ts_node.children if c.is_named or c.is_missing]
+    kind = ts_node.type
+    if ts_node.is_missing:
+        kind = "MISSING " + kind
+    if ts_node.type == "ERROR" or ts_node.is_error:
+        kind = "ERROR"
+    return (kind, children)
+
+
+def show(tree, indent=0):
+    kind, children = tree
+    if not children:
+        return "  " * indent + "(" + kind + ")"
+    inner = "\n".join(show(c, indent + 1) for c in children)
+    return "  " * indent + "(" + kind + "\n" + inner + ")"
+
+
+def strip_inline_children(tree):
+    """Drop what upstream's block grammar cannot see: the inline layer's nodes
+    inside `inline` and `pipe_table_cell`.  Block continuations stay; upstream
+    keeps them there too."""
+    kind, children = tree
+    if kind in ("inline", "pipe_table_cell"):
+        kept = []
+
+        def walk(t):
+            if t[0] == "block_continuation":
+                kept.append(t)
+            else:
+                for c in t[1]:
+                    walk(c)
+
+        for c in children:
+            walk(c)
+        return (kind, kept)
+    return (kind, [strip_inline_children(c) for c in children])
+
+
+def normalise_block(tree):
+    """(source_file (body ...)) -> (document (section ...) (section ...))."""
+    kind, children = tree
+    assert kind == "source_file", kind
+    body = [c for c in children if c[0] == "body"]
+    out = []
+    if body:
+        blocks = body[0][1]
+        leading = [b for b in blocks if b[0] != "section"]
+        sections = [b for b in blocks if b[0] == "section"]
+        if leading or not sections:
+            out.append(("section", leading))
+        out.extend(sections)
+    frontmatter = [c for c in children if c[0] == "frontmatter"]
+    return ("document", frontmatter + out)
+
+
+def drop(tree, kinds):
+    kind, children = tree
+    return (kind, [drop(c, kinds) for c in children if c[0] not in kinds])
+
+
+def collect_inline(tree):
+    """Concatenate the children of every `inline` node, in document order."""
+    found = []
+
+    def walk(t):
+        kind, children = t
+        if kind == "inline":
+            found.extend(children)
+            return
+        if kind == "ERROR":
+            found.append(t)
+            return
+        for c in children:
+            walk(c)
+
+    walk(tree)
+    return drop(("inline", found), {"block_continuation"})
+
+
+def load_divergences():
+    listed = {}
+    if not os.path.exists(DIVERGENCES):
+        return listed
+    for line in open(DIVERGENCES, encoding="utf-8"):
+        line = line.rstrip("\n")
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        # the reason follows " # "; test names contain URL fragments
+        key, _, reason = line.partition(" # ")
+        listed[key.strip()] = reason.strip()
+    return listed
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("-v", "--verbose", action="store_true", help="print trees of failing cases")
+    ap.add_argument("--only", help="only run cases whose key contains this substring")
+    ap.add_argument("--list-failures", action="store_true",
+                    help="print failing keys in divergence-file format")
+    args = ap.parse_args()
+
+    parser = tree_sitter.Parser(tree_sitter.Language(tree_sitter_okf.language()))
+    divergences = load_divergences()
+    seen = set()
+    passed = failed = diverged = 0
+    unexpected = []
+    stale = []
+
+    for layer in ("block", "inline"):
+        directory = os.path.join(VENDOR, layer)
+        for fname in sorted(os.listdir(directory)):
+            rel = f"{layer}/{fname}"
+            if rel in SKIPPED_FILES:
+                continue
+            for name, attributes, source, expected in parse_corpus(os.path.join(directory, fname)):
+                key = f"{rel}: {name}"
+                if args.only and args.only not in key:
+                    continue
+                if ":skip" in attributes:
+                    continue
+                tree = parser.parse(source.encode("utf-8"))
+                ours = to_tree(tree.root_node)
+                if layer == "block":
+                    ours = normalise_block(strip_inline_children(ours))
+                else:
+                    ours = collect_inline(ours)
+                want = parse_sexp(expected)
+                ok = ours == want
+                seen.add(key)
+                if ok:
+                    passed += 1
+                    if key in divergences:
+                        stale.append(key)
+                    continue
+                if key in divergences:
+                    diverged += 1
+                    continue
+                failed += 1
+                unexpected.append(key)
+                if args.verbose:
+                    print(f"--- {key}")
+                    print(source)
+                    print("expected:")
+                    print(show(want))
+                    print("ours:")
+                    print(show(ours))
+                    print()
+
+    missing = sorted(k for k in divergences if k not in seen and not args.only)
+    total = passed + failed + diverged
+    print(f"{total} upstream cases: {passed} identical, {diverged} recorded divergences, "
+          f"{failed} unexpected differences")
+    if args.list_failures:
+        for key in unexpected:
+            print(f"{key}  # ")
+    elif unexpected and not args.verbose:
+        for key in unexpected:
+            print(f"  DIFF   {key}")
+    for key in stale:
+        print(f"  STALE  {key}  (listed as a divergence but now identical)")
+    for key in missing:
+        print(f"  GONE   {key}  (listed as a divergence but not in the corpus)")
+    return 1 if (unexpected or stale or missing) else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -8,3 +8,5 @@ build/
 *.obj
 target/
 .DS_Store
+.devtools/venv/
+*.egg-info/

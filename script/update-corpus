@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""Rewrite the expected trees in test/corpus from the current parser.
+
+Like `tree-sitter test --update`, but the trees keep their field names
+(`key:`, `value:`, `label:`, `heading_content:` ...), which are public API
+(spec P7) and so belong in the expected output.  Review every change with
+`git diff test/corpus` before committing: this records what the parser does,
+not what it should do.
+
+Usage: script/update-corpus [FILE...]   (default: every file in test/corpus)
+"""
+
+import os
+import re
+import sys
+
+import tree_sitter
+import tree_sitter_okf
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CORPUS = os.path.join(ROOT, "test", "corpus")
+
+HEADER = re.compile(r"^(={3,})\n(.*?)\n\1\n", re.M | re.S)
+
+
+def render(node, field=None, depth=0):
+    """A named-node S-expression, one node per line, with field names."""
+    pad = "  " * depth
+    label = f"{field}: " if field else ""
+    if node.is_missing:
+        kind = node.type if node.is_named else f'"{node.type}"'
+        return f"{pad}{label}(MISSING {kind})"
+    children = []
+    cursor = node.walk()
+    if cursor.goto_first_child():
+        while True:
+            child = cursor.node
+            if child.is_named or child.is_missing:
+                children.append(render(child, cursor.field_name, depth + 1))
+            if not cursor.goto_next_sibling():
+                break
+    kind = "ERROR" if node.is_error else node.type
+    if not children:
+        return f"{pad}{label}({kind})"
+    return f"{pad}{label}({kind}\n" + "\n".join(children) + ")"
+
+
+def update(path, parser):
+    text = open(path, encoding="utf-8").read()
+    out = []
+    pos = 0
+    headers = list(HEADER.finditer(text))
+    for i, m in enumerate(headers):
+        end = headers[i + 1].start() if i + 1 < len(headers) else len(text)
+        body = text[m.end():end]
+        dashes = list(re.finditer(r"^-{3,}\n", body, re.M))
+        if not dashes:
+            out.append(text[m.start():end])
+            continue
+        divider = dashes[-1]
+        source = body[: divider.start()]
+        if source.endswith("\n"):
+            source = source[:-1]
+        tree = parser.parse(source.encode("utf-8"))
+        out.append(text[m.start():m.end()] + body[: divider.end()] + "\n" +
+                   render(tree.root_node) + "\n\n")
+        pos = end
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        f.write("".join(out).rstrip("\n") + "\n")
+
+
+def main(argv):
+    parser = tree_sitter.Parser(tree_sitter.Language(tree_sitter_okf.language()))
+    paths = argv or [
+        os.path.join(dirpath, name)
+        for dirpath, _, names in os.walk(CORPUS)
+        for name in sorted(names)
+        if name.endswith(".txt")
+    ]
+    for path in sorted(paths):
+        update(path, parser)
+        print(f"updated {os.path.relpath(path, ROOT)}")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

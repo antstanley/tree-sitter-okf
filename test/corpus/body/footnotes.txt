@@ -1,0 +1,194 @@
+================================================================================
+Footnote reference and definition (OKF 5.1 per-claim attribution)
+================================================================================
+Gross margin equals revenue minus COGS.[^margin-standard]
+
+[^margin-standard]: Cost Allocation & Margin Standard (FY2026)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline
+        (footnote_reference
+          label: (footnote_label))))
+    (footnote_definition
+      label: (footnote_label)
+      (paragraph
+        (inline)))))
+
+================================================================================
+Consecutive footnote definitions are separate
+================================================================================
+[^a]: First source
+[^b]: Second source
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (footnote_definition
+      label: (footnote_label)
+      (paragraph
+        (inline)))
+    (footnote_definition
+      label: (footnote_label)
+      (paragraph
+        (inline)))))
+
+================================================================================
+Footnote definition interrupts a paragraph
+================================================================================
+Text
+[^a]: Source
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline))
+    (footnote_definition
+      label: (footnote_label)
+      (paragraph
+        (inline)))))
+
+================================================================================
+Multi-line footnote definition
+================================================================================
+[^a]: First line
+    continued, indented four
+
+    second paragraph
+
+After.
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (footnote_definition
+      label: (footnote_label)
+      (paragraph
+        (inline
+          (block_continuation))
+        (block_continuation))
+      (block_continuation)
+      (paragraph
+        (inline)
+        (block_continuation)))
+    (paragraph
+      (inline))))
+
+================================================================================
+Several references in one line
+================================================================================
+A[^a] and B[^b-2], also C.[^c_3]
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline
+        (footnote_reference
+          label: (footnote_label))
+        (footnote_reference
+          label: (footnote_label))
+        (footnote_reference
+          label: (footnote_label))))))
+
+================================================================================
+Footnote reference in a table cell
+================================================================================
+| Metric | Source |
+|---|---|
+| Revenue | policy[^rev] |
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (pipe_table
+      (pipe_table_header
+        (pipe_table_cell)
+        (pipe_table_cell))
+      (pipe_table_delimiter_row
+        (pipe_table_delimiter_cell)
+        (pipe_table_delimiter_cell))
+      (pipe_table_row
+        (pipe_table_cell)
+        (pipe_table_cell
+          (footnote_reference
+            label: (footnote_label)))))))
+
+================================================================================
+Footnote reference inside emphasis and link text
+================================================================================
+*claim[^a]* and [text[^b]](./x.md)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline
+        (emphasis
+          (emphasis_delimiter)
+          (footnote_reference
+            label: (footnote_label))
+          (emphasis_delimiter))
+        (inline_link
+          (link_text
+            (footnote_reference
+              label: (footnote_label)))
+          (link_destination))))))
+
+================================================================================
+Malformed footnote syntax is not a footnote
+================================================================================
+[^] and [^ a] and [^a b] and [ ^a]
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline
+        (shortcut_link
+          (link_text))
+        (shortcut_link
+          (link_text))
+        (shortcut_link
+          (link_text))
+        (shortcut_link
+          (link_text))))))
+
+================================================================================
+A reference with no definition still parses (spec 8)
+================================================================================
+Unresolved[^missing].
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline
+        (footnote_reference
+          label: (footnote_label))))))
+
+================================================================================
+Footnote definition label with punctuation
+================================================================================
+[^margin-standard.v2]: Text
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (footnote_definition
+      label: (footnote_label)
+      (paragraph
+        (inline)))))

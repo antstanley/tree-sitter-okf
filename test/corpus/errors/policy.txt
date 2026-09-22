@@ -1,0 +1,203 @@
+================================================================================
+Unterminated frontmatter gets a MISSING closing delimiter (spec 8)
+================================================================================
+---
+type: Metric
+title: Revenue
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar)))
+    (MISSING "---")))
+
+================================================================================
+Unterminated frontmatter swallows the rest of the file (spec 4.2)
+================================================================================
+---
+type: Metric
+# Heading
+
+Body text.
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (comment)
+      (yaml_unsupported))
+    (MISSING "---")))
+
+================================================================================
+Unterminated frontmatter inside a nested block
+================================================================================
+---
+sources:
+  - id: a
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar)))))))
+    (MISSING "---")))
+
+================================================================================
+Out-of-subset frontmatter never poisons the body (spec P4)
+================================================================================
+---
+? complex
+type: [unclosed
+---
+# Body
+
+text[^a]
+
+[^a]: ok
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (yaml_unsupported)
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (yaml_unsupported))))
+  body: (body
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline))
+      (paragraph
+        (inline
+          (footnote_reference
+            label: (footnote_label))))
+      (footnote_definition
+        label: (footnote_label)
+        (paragraph
+          (inline))))))
+
+================================================================================
+Missing type parses fine (OKF 4.1, 11)
+================================================================================
+---
+title: No type here
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Unknown keys are ordinary pairs (OKF 11.6)
+================================================================================
+---
+type: Metric
+x_vendor_field: whatever
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Unclosed fence runs to end of file (spec 8)
+================================================================================
+# Computation
+
+```sql
+SELECT 1
+
+# Not a heading
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline))
+      (fenced_code_block
+        (fenced_code_block_delimiter)
+        (info_string
+          (language))
+        (block_continuation)
+        (code_fence_content
+          (block_continuation)
+          (block_continuation))))))
+
+================================================================================
+Malformed table falls back to a paragraph (spec 8)
+================================================================================
+| a | b |
+| - x |
+| 1 | 2 |
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline))))
+
+================================================================================
+Broken footnote reference is still a reference (spec 8)
+================================================================================
+Claim[^nope].
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline
+        (footnote_reference
+          label: (footnote_label))))))
+
+================================================================================
+Unbalanced emphasis and brackets are text
+================================================================================
+a *b **c [d ( e ` f
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline))))

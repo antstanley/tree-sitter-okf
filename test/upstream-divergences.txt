@@ -1,0 +1,20 @@
+# Upstream tree-sitter-markdown test cases whose tree deliberately differs in
+# tree-sitter-okf.  Checked by script/diff-upstream, which fails if a case
+# listed here stops differing, or if an unlisted case differs.
+#
+# Format: <corpus>/<file>: <test name>  # reason
+
+# The upstream inline corpus parses each example as bare inline text.  These
+# examples start with a line that is a block construct in a whole document,
+# which is what tree-sitter-okf parses (CommonMark: an HTML block).
+inline/spec.txt: Example 317 - https://github.github.com/gfm/#example-317  # a complete open tag alone on a line is an HTML block (type 7) in a document
+inline/spec.txt: Example 327 - https://github.github.com/gfm/#example-327  # a complete open tag alone on a line is an HTML block (type 7) in a document
+
+# The upstream corpus is generated with every extension on.  OKF v0.2 has no
+# `#tag` syntax, so the tags dialect is off (spec D7).
+inline/spec.txt: Example 324 - https://github.github.com/gfm/#example-324  # `#;` and `#x;` are tags only in the tags dialect (spec D7)
+inline/spec.txt: Example 638 - https://github.github.com/gfm/#example-638  # `#ref` is a tag only in the tags dialect (spec D7)
+
+# Upstream notes this case cannot pass without block structure.  With it, the
+# blank line ends the paragraph and the strikethrough is correctly unmatched.
+inline/extension_strikethrough.txt: Example 492 - https://github.github.com/gfm/#example-492  # a blank line ends the paragraph, so the delimiters do not match (correct GFM)

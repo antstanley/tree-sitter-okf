@@ -1,0 +1,232 @@
+================================================================================
+Sections nest by heading level (spec Q8)
+================================================================================
+# One
+
+text
+
+## Two
+
+more
+
+# Three
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline))
+      (paragraph
+        (inline))
+      (section
+        (atx_heading
+          (atx_h2_marker)
+          heading_content: (inline))
+        (paragraph
+          (inline))))
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline)))))
+
+================================================================================
+Blocks before the first heading are direct children of body
+================================================================================
+Intro paragraph.
+
+# Heading
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline))
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline)))))
+
+================================================================================
+Conventional OKF headings are ordinary headings (spec 6.3)
+================================================================================
+# Schema
+
+# Examples
+
+# Computation
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline)))
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline)))
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline)))))
+
+================================================================================
+log.md date headings (OKF 9)
+================================================================================
+# Log
+
+## 2026-07-01
+
+- Verified revenue.
+
+## 2026-06-30
+
+- Created.
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline))
+      (section
+        (atx_heading
+          (atx_h2_marker)
+          heading_content: (inline))
+        (list
+          (list_item
+            (list_marker_minus)
+            (paragraph
+              (inline)
+              (block_continuation)))))
+      (section
+        (atx_heading
+          (atx_h2_marker)
+          heading_content: (inline))
+        (list
+          (list_item
+            (list_marker_minus)
+            (paragraph
+              (inline))))))))
+
+================================================================================
+ATX heading content is inline
+================================================================================
+# The `revenue` metric *(FY2026)* [link](./x.md)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline
+          (code_span
+            (code_span_delimiter)
+            (code_span_delimiter))
+          (emphasis
+            (emphasis_delimiter)
+            (emphasis_delimiter))
+          (inline_link
+            (link_text)
+            (link_destination)))))))
+
+================================================================================
+Empty ATX headings
+================================================================================
+#
+
+## 
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (section
+      (atx_heading
+        (atx_h1_marker))
+      (section
+        (atx_heading
+          (atx_h2_marker))))))
+
+================================================================================
+All six levels
+================================================================================
+# 1
+## 2
+### 3
+#### 4
+##### 5
+###### 6
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline))
+      (section
+        (atx_heading
+          (atx_h2_marker)
+          heading_content: (inline))
+        (section
+          (atx_heading
+            (atx_h3_marker)
+            heading_content: (inline))
+          (section
+            (atx_heading
+              (atx_h4_marker)
+              heading_content: (inline))
+            (section
+              (atx_heading
+                (atx_h5_marker)
+                heading_content: (inline))
+              (section
+                (atx_heading
+                  (atx_h6_marker)
+                  heading_content: (inline))))))))))
+
+================================================================================
+Setext headings
+================================================================================
+Title
+=====
+
+Subtitle
+--------
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (setext_heading
+      heading_content: (paragraph
+        (inline))
+      (setext_h1_underline))
+    (setext_heading
+      heading_content: (paragraph
+        (inline))
+      (setext_h2_underline))))
+
+================================================================================
+A hash without a space is not a heading
+================================================================================
+#hashtag is text
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline))))

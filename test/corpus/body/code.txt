@@ -1,0 +1,201 @@
+================================================================================
+Fenced code under a Computation heading (OKF 10.3)
+================================================================================
+# Computation
+
+```sql
+SELECT SUM(amount)
+FROM orders
+```
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline))
+      (fenced_code_block
+        (fenced_code_block_delimiter)
+        (info_string
+          (language))
+        (block_continuation)
+        (code_fence_content
+          (block_continuation)
+          (block_continuation))
+        (fenced_code_block_delimiter)))))
+
+================================================================================
+Indented code block (OKF 10.2)
+================================================================================
+# Computation
+
+    SELECT 1
+    FROM t
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline))
+      (indented_code_block
+        (block_continuation)))))
+
+================================================================================
+Tilde fence with attributes in the info string
+================================================================================
+~~~json {.numberLines}
+{"a": 1}
+~~~
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (fenced_code_block
+      (fenced_code_block_delimiter)
+      (info_string
+        (language))
+      (block_continuation)
+      (code_fence_content
+        (block_continuation))
+      (fenced_code_block_delimiter))))
+
+================================================================================
+Fence without info string
+================================================================================
+```
+plain
+```
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (fenced_code_block
+      (fenced_code_block_delimiter)
+      (block_continuation)
+      (code_fence_content
+        (block_continuation))
+      (fenced_code_block_delimiter))))
+
+================================================================================
+Unclosed fence runs to the end (spec 8)
+================================================================================
+```sql
+SELECT 1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (fenced_code_block
+      (fenced_code_block_delimiter)
+      (info_string
+        (language))
+      (block_continuation)
+      (code_fence_content))))
+
+================================================================================
+Longer closing fence
+================================================================================
+````
+```
+nested
+```
+````
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (fenced_code_block
+      (fenced_code_block_delimiter)
+      (block_continuation)
+      (code_fence_content
+        (block_continuation)
+        (block_continuation)
+        (block_continuation))
+      (fenced_code_block_delimiter))))
+
+================================================================================
+Fence inside a list item
+================================================================================
+- step
+
+  ```sql
+  SELECT 1
+  ```
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (list
+      (list_item
+        (list_marker_minus)
+        (paragraph
+          (inline)
+          (block_continuation))
+        (block_continuation)
+        (fenced_code_block
+          (fenced_code_block_delimiter)
+          (info_string
+            (language))
+          (block_continuation)
+          (code_fence_content
+            (block_continuation))
+          (fenced_code_block_delimiter))))))
+
+================================================================================
+Code spans
+================================================================================
+Use `revenue_ytd` and ``a ` b`` and ` spaced `.
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline
+        (code_span
+          (code_span_delimiter)
+          (code_span_delimiter))
+        (code_span
+          (code_span_delimiter)
+          (code_span_delimiter))
+        (code_span
+          (code_span_delimiter)
+          (code_span_delimiter))))))
+
+================================================================================
+Code span across a line break
+================================================================================
+A `multi
+line` span.
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline
+        (code_span
+          (code_span_delimiter)
+          (code_span_delimiter))))))
+
+================================================================================
+Unclosed backticks stay literal
+================================================================================
+A `lone backtick here.
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline))))

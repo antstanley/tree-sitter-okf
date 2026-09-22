@@ -1,0 +1,304 @@
+================================================================================
+Frontmatter then body (spec 4.2)
+================================================================================
+---
+type: Metric
+---
+# Revenue
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline)))))
+
+================================================================================
+Frontmatter with an empty body
+================================================================================
+---
+type: Metric
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Frontmatter without a final newline
+================================================================================
+---
+type: Metric
+---
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Empty frontmatter
+================================================================================
+---
+---
+body
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter)
+  body: (body
+    (paragraph
+      (inline))))
+
+================================================================================
+Frontmatter with only a comment
+================================================================================
+---
+# nothing here yet
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (comment))
+  body: (body))
+
+================================================================================
+Blank lines inside frontmatter
+================================================================================
+---
+
+type: Metric
+
+
+title: Revenue
+
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+No frontmatter: the whole file is body (spec D6)
+================================================================================
+# Index
+
+- [Revenue](revenue.md)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline))
+      (list
+        (list_item
+          (list_marker_minus)
+          (paragraph
+            (inline
+              (inline_link
+                (link_text)
+                (link_destination)))))))))
+
+================================================================================
+Four dashes are not a delimiter
+================================================================================
+----
+type: Metric
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (thematic_break)
+    (paragraph
+      (inline))))
+
+================================================================================
+Three dashes and trailing space are not a delimiter
+================================================================================
+--- 
+type: Metric
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (thematic_break)
+    (paragraph
+      (inline))))
+
+================================================================================
+A delimiter after a blank line is not frontmatter (spec Q4)
+================================================================================
+
+---
+type: Metric
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (thematic_break)
+    (setext_heading
+      heading_content: (paragraph
+        (inline))
+      (setext_h2_underline))))
+
+================================================================================
+A later --- is never a frontmatter delimiter
+================================================================================
+Intro
+
+---
+
+type: Metric
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (paragraph
+      (inline))
+    (thematic_break)
+    (setext_heading
+      heading_content: (paragraph
+        (inline))
+      (setext_h2_underline))))
+
+================================================================================
+--- inside a fenced code block in the body
+================================================================================
+---
+type: Metric
+---
+```yaml
+---
+x: 1
+---
+```
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body
+    (fenced_code_block
+      (fenced_code_block_delimiter)
+      (info_string
+        (language))
+      (block_continuation)
+      (code_fence_content
+        (block_continuation)
+        (block_continuation)
+        (block_continuation))
+      (fenced_code_block_delimiter))))
+
+================================================================================
+Document end marker before the closing delimiter
+================================================================================
+---
+type: Metric
+...
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar)))
+    (yaml_document_end))
+  body: (body))
+
+================================================================================
+Closing delimiter with trailing text
+================================================================================
+---
+type: Metric
+--- trailing
+body
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body
+    (paragraph
+      (inline))))
+
+================================================================================
+Closing delimiter closes every open block
+================================================================================
+---
+sources:
+  - id: a
+    tags:
+      - x
+---
+body
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (block_sequence
+                  (block_sequence_item
+                    (plain_scalar))))))))))
+  body: (body
+    (paragraph
+      (inline))))

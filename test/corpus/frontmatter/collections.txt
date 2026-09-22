@@ -1,0 +1,599 @@
+================================================================================
+Nested block mapping
+================================================================================
+---
+generated:
+  by: reference_agent/gemini-2.5-pro
+  at: 2026-06-30T14:00:00Z
+type: Metric
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_mapping
+          (block_mapping_pair
+            key: (plain_scalar)
+            value: (plain_scalar))
+          (block_mapping_pair
+            key: (plain_scalar)
+            value: (plain_scalar))))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Indented block sequence
+================================================================================
+---
+tags:
+  - finance
+  - margin
+type: Metric
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (plain_scalar))
+          (block_sequence_item
+            (plain_scalar))))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Zero-indented block sequence (spec 5.1(2))
+================================================================================
+---
+tags:
+- finance
+- margin
+type: Metric
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (plain_scalar))
+          (block_sequence_item
+            (plain_scalar))))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Zero-indented sequence of mappings
+================================================================================
+---
+sources:
+- id: margin-standard
+  resource: policies/margin-standard.md
+- id: revenue-policy
+  resource: policies/revenue-recognition.md
+title: Gross Margin
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))))
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))))))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Indented sequence of mappings (spec 5.1(3))
+================================================================================
+---
+not:
+  - term: "revenue minus product cost only"
+    why: "legacy"
+  - term: "gross profit"
+    why: "different metric"
+status: stable
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (double_quote_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (double_quote_scalar))))
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (double_quote_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (double_quote_scalar))))))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Mapping nested inside a sequence item
+================================================================================
+---
+sources:
+  - id: s1
+    author:
+      name: jsmith
+      org: acme
+  - id: s2
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (block_mapping
+                  (block_mapping_pair
+                    key: (plain_scalar)
+                    value: (plain_scalar))
+                  (block_mapping_pair
+                    key: (plain_scalar)
+                    value: (plain_scalar))))))
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))))))))
+  body: (body))
+
+================================================================================
+Sequence as the value of a key inside a sequence item
+================================================================================
+---
+verified:
+- by: human:jsmith@acme
+  scopes:
+  - finance
+  - audit
+- by: machine:attester
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (block_sequence
+                  (block_sequence_item
+                    (plain_scalar))
+                  (block_sequence_item
+                    (plain_scalar))))))
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))))))))
+  body: (body))
+
+================================================================================
+Nested compact sequences
+================================================================================
+---
+matrix:
+- - a
+  - b
+- - c
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (block_sequence
+              (block_sequence_item
+                (plain_scalar))
+              (block_sequence_item
+                (plain_scalar))))
+          (block_sequence_item
+            (block_sequence
+              (block_sequence_item
+                (plain_scalar))))))))
+  body: (body))
+
+================================================================================
+Sequence item on its own line
+================================================================================
+---
+items:
+-
+  id: a
+- b
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))))
+          (block_sequence_item
+            (plain_scalar))))))
+  body: (body))
+
+================================================================================
+Flow mapping (spec 5.1(4))
+================================================================================
+---
+generated: { by: reference_agent/gemini-2.5-pro, at: 2026-06-30T14:00:00Z }
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (flow_mapping
+          (flow_pair
+            key: (plain_scalar)
+            value: (plain_scalar))
+          (flow_pair
+            key: (plain_scalar)
+            value: (plain_scalar))))))
+  body: (body))
+
+================================================================================
+Flow mappings nested in sequence items
+================================================================================
+---
+parameters:
+  - { name: year, type: integer, required: true }
+  - { name: region, type: string }
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (flow_mapping
+              (flow_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (flow_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (flow_pair
+                key: (plain_scalar)
+                value: (plain_scalar))))
+          (block_sequence_item
+            (flow_mapping
+              (flow_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (flow_pair
+                key: (plain_scalar)
+                value: (plain_scalar))))))))
+  body: (body))
+
+================================================================================
+Flow sequences (spec 5.1(5))
+================================================================================
+---
+tags: [finance, margin, headline-metric]
+receipt: [job_id, executed_sql, result]
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (flow_sequence
+          (plain_scalar)
+          (plain_scalar)
+          (plain_scalar)))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (flow_sequence
+          (plain_scalar)
+          (plain_scalar)
+          (plain_scalar)))))
+  body: (body))
+
+================================================================================
+Empty flow collections and trailing commas
+================================================================================
+---
+a: []
+b: {}
+c: [x, y,]
+d: {k: v,}
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (flow_sequence))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (flow_mapping))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (flow_sequence
+          (plain_scalar)
+          (plain_scalar)))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (flow_mapping
+          (flow_pair
+            key: (plain_scalar)
+            value: (plain_scalar))))))
+  body: (body))
+
+================================================================================
+Nested flow collections with quoted scalars
+================================================================================
+---
+x: {a: [1, "two", 'three'], b: {c: d}}
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (flow_mapping
+          (flow_pair
+            key: (plain_scalar)
+            value: (flow_sequence
+              (plain_scalar)
+              (double_quote_scalar)
+              (single_quote_scalar)))
+          (flow_pair
+            key: (plain_scalar)
+            value: (flow_mapping
+              (flow_pair
+                key: (plain_scalar)
+                value: (plain_scalar))))))))
+  body: (body))
+
+================================================================================
+Multi-line flow collections (spec 5.1(11))
+================================================================================
+---
+tags: [finance,
+  margin,
+  headline]
+map: {
+  a: 1,
+  b: 2
+}
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (flow_sequence
+          (plain_scalar)
+          (plain_scalar)
+          (plain_scalar)))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (flow_mapping
+          (flow_pair
+            key: (plain_scalar)
+            value: (plain_scalar))
+          (flow_pair
+            key: (plain_scalar)
+            value: (plain_scalar))))))
+  body: (body))
+
+================================================================================
+Quoted keys
+================================================================================
+---
+"type": Metric
+'title': Revenue
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (double_quote_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (single_quote_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Duplicate keys parse (spec 5.4)
+================================================================================
+---
+type: A
+type: B
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Deeply nested mappings
+================================================================================
+---
+a:
+  b:
+    c:
+      d:
+        e: deep
+f: top
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_mapping
+          (block_mapping_pair
+            key: (plain_scalar)
+            value: (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (block_mapping
+                  (block_mapping_pair
+                    key: (plain_scalar)
+                    value: (block_mapping
+                      (block_mapping_pair
+                        key: (plain_scalar)
+                        value: (plain_scalar))))))))))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+A top-level sequence
+================================================================================
+---
+- a
+- b
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_sequence
+      (block_sequence_item
+        (plain_scalar))
+      (block_sequence_item
+        (plain_scalar))))
+  body: (body))
+
+================================================================================
+A top-level scalar
+================================================================================
+---
+just a scalar
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (plain_scalar))
+  body: (body))

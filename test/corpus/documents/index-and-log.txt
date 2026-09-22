@@ -1,0 +1,237 @@
+================================================================================
+Bundle index without frontmatter (OKF 8): acme_retail/index.md
+================================================================================
+# Subdirectories
+
+* [tables](tables/index.md) - BigQuery tables the bundle grounds against.
+* [metrics](metrics/index.md) - Business definitions of Acme Retail's headline numbers.
+* [computations](computations/index.md) - Sanctioned SQL as Attested Computations for each metric.
+* [policies](policies/index.md) - Source-of-truth Finance policy documents.
+* [skills](skills/index.md) - Executor instructions for running Attested Computations.
+* [attesters](attesters/index.md) - Deterministic verification code for computation receipts.
+--------------------------------------------------------------------------------
+
+(source_file
+  body: (body
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline))
+      (list
+        (list_item
+          (list_marker_star)
+          (paragraph
+            (inline
+              (inline_link
+                (link_text)
+                (link_destination)))))
+        (list_item
+          (list_marker_star)
+          (paragraph
+            (inline
+              (inline_link
+                (link_text)
+                (link_destination)))))
+        (list_item
+          (list_marker_star)
+          (paragraph
+            (inline
+              (inline_link
+                (link_text)
+                (link_destination)))))
+        (list_item
+          (list_marker_star)
+          (paragraph
+            (inline
+              (inline_link
+                (link_text)
+                (link_destination)))))
+        (list_item
+          (list_marker_star)
+          (paragraph
+            (inline
+              (inline_link
+                (link_text)
+                (link_destination)))))
+        (list_item
+          (list_marker_star)
+          (paragraph
+            (inline
+              (inline_link
+                (link_text)
+                (link_destination)))))))))
+
+================================================================================
+Log with frontmatter and date headings (OKF 9): acme_retail/log.md
+================================================================================
+---
+type: Log
+title: Acme Retail bundle history
+---
+
+# Bundle history
+
+## 2026-07-01
+
+- **Verified** the full bundle for OKF v0.2 conformance. `human:kliu@acme` reviewed all `verified` and `sources` entries.
+
+## 2026-06-30
+
+- **Re-generated** `metrics/revenue.md`, `computations/revenue-ytd.md`, and `policies/revenue-recognition.md` after Finance published the FY2026 revenue recognition policy addendum. Updated `stale_after` on both revenue concepts to `2026-12-31T00:00:00Z`.
+
+## 2026-04-15
+
+- **Deprecated** the legacy gross-margin definition. Original file moved to `metrics/gross-margin-legacy.md` with `status: deprecated`. New definition at `metrics/gross-margin.md` implements the FY2026 Cost Allocation Standard (includes fulfillment and shipping costs in COGS).
+
+## 2026-02-10
+
+- **Bundle bootstrapped** by `reference_agent/gemini-2.5-pro` from the BigQuery `INFORMATION_SCHEMA` and a 90-day sample of `region-us.INFORMATION_SCHEMA.JOBS_BY_PROJECT`. Initial trust tier: machine-confirmed across the board; finance-critical concepts flagged for human review.
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline))
+      (section
+        (atx_heading
+          (atx_h2_marker)
+          heading_content: (inline))
+        (list
+          (list_item
+            (list_marker_minus)
+            (paragraph
+              (inline
+                (strong_emphasis
+                  (emphasis_delimiter)
+                  (emphasis_delimiter)
+                  (emphasis_delimiter)
+                  (emphasis_delimiter))
+                (code_span
+                  (code_span_delimiter)
+                  (code_span_delimiter))
+                (code_span
+                  (code_span_delimiter)
+                  (code_span_delimiter))
+                (code_span
+                  (code_span_delimiter)
+                  (code_span_delimiter)))
+              (block_continuation)))))
+      (section
+        (atx_heading
+          (atx_h2_marker)
+          heading_content: (inline))
+        (list
+          (list_item
+            (list_marker_minus)
+            (paragraph
+              (inline
+                (strong_emphasis
+                  (emphasis_delimiter)
+                  (emphasis_delimiter)
+                  (emphasis_delimiter)
+                  (emphasis_delimiter))
+                (code_span
+                  (code_span_delimiter)
+                  (code_span_delimiter))
+                (code_span
+                  (code_span_delimiter)
+                  (code_span_delimiter))
+                (code_span
+                  (code_span_delimiter)
+                  (code_span_delimiter))
+                (code_span
+                  (code_span_delimiter)
+                  (code_span_delimiter))
+                (code_span
+                  (code_span_delimiter)
+                  (code_span_delimiter)))
+              (block_continuation)))))
+      (section
+        (atx_heading
+          (atx_h2_marker)
+          heading_content: (inline))
+        (list
+          (list_item
+            (list_marker_minus)
+            (paragraph
+              (inline
+                (strong_emphasis
+                  (emphasis_delimiter)
+                  (emphasis_delimiter)
+                  (emphasis_delimiter)
+                  (emphasis_delimiter))
+                (code_span
+                  (code_span_delimiter)
+                  (code_span_delimiter))
+                (code_span
+                  (code_span_delimiter)
+                  (code_span_delimiter))
+                (code_span
+                  (code_span_delimiter)
+                  (code_span_delimiter)))
+              (block_continuation)))))
+      (section
+        (atx_heading
+          (atx_h2_marker)
+          heading_content: (inline))
+        (list
+          (list_item
+            (list_marker_minus)
+            (paragraph
+              (inline
+                (strong_emphasis
+                  (emphasis_delimiter)
+                  (emphasis_delimiter)
+                  (emphasis_delimiter)
+                  (emphasis_delimiter))
+                (code_span
+                  (code_span_delimiter)
+                  (code_span_delimiter))
+                (code_span
+                  (code_span_delimiter)
+                  (code_span_delimiter))
+                (code_span
+                  (code_span_delimiter)
+                  (code_span_delimiter))))))))))
+
+================================================================================
+Bundle-root index with okf_version frontmatter (OKF 12)
+================================================================================
+---
+okf_version: "0.2"
+---
+# Acme Retail
+
+* [metrics](metrics/index.md) - Headline numbers.
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (double_quote_scalar))))
+  body: (body
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline))
+      (list
+        (list_item
+          (list_marker_star)
+          (paragraph
+            (inline
+              (inline_link
+                (link_text)
+                (link_destination)))))))))

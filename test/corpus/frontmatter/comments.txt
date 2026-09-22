@@ -1,0 +1,132 @@
+================================================================================
+Comment lines and trailing comments (spec 5.1(9))
+================================================================================
+---
+# leading
+type: Metric # trailing
+# between
+title: Revenue
+# final
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (comment)
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (comment)
+      (comment)
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar)))
+    (comment))
+  body: (body))
+
+================================================================================
+Comment lines do not affect indentation
+================================================================================
+---
+sources:
+  - id: a
+# a column-0 comment inside the list
+  - id: b
+    # an indented comment
+    url: x
+type: Metric
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))))
+          (comment)
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (comment)
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))))))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Comment after a key with a nested block
+================================================================================
+---
+generated: # who made this
+  by: agent
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        (comment)
+        value: (block_mapping
+          (block_mapping_pair
+            key: (plain_scalar)
+            value: (plain_scalar))))))
+  body: (body))
+
+================================================================================
+Comment inside a flow collection
+================================================================================
+---
+tags: [a, # first
+  b]
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (flow_sequence
+          (plain_scalar)
+          (comment)
+          (plain_scalar)))))
+  body: (body))
+
+================================================================================
+A hash inside a scalar is not a comment
+================================================================================
+---
+issue: see#42
+quoted: 'a # b'
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (single_quote_scalar))))
+  body: (body))

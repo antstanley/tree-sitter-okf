@@ -1,0 +1,1673 @@
+================================================================================
+Metric concept: acme_retail/metrics/gross-margin.md
+================================================================================
+---
+type: Metric
+title: Gross Margin
+description: Gross margin for a period, per Acme's FY2026 Cost Allocation Standard (product cost + inbound fulfillment + outbound shipping + payment fees).
+tags: [finance, margin, headline-metric]
+generated: { by: reference_agent/gemini-2.5-pro, at: 2026-06-30T14:00:00Z }
+verified:
+  - { by: human:jsmith@acme, at: 2026-07-01T09:00:00Z }
+status: stable
+stale_after: 2026-12-31T00:00:00Z
+not:
+  - term: "revenue minus product cost only"
+    why: "that is the pre-FY2026 definition (see gross-margin-legacy). It excluded fulfillment, shipping, and payment fees, and could not be reconciled to the general ledger."
+    instead: "revenue minus full COGS (product cost + inbound fulfillment + outbound shipping + payment fees)"
+sources:
+  - id: margin-standard
+    resource: policies/margin-standard.md
+    title: Cost Allocation & Margin Standard (FY2026)
+    author: human:jsmith@acme
+    last_modified: 2026-06-15T00:00:00Z
+  - id: revenue-policy
+    resource: policies/revenue-recognition.md
+    title: Revenue Recognition Policy (FY2026)
+    author: human:jsmith@acme
+    last_modified: 2026-06-15T00:00:00Z
+---
+
+# Definition
+
+**Not:** revenue minus product cost only (that was the pre-2026 formula; see [`gross-margin-legacy`](./gross-margin-legacy.md)).
+
+Gross margin for a period equals recognized [Revenue](./revenue.md) minus **full COGS**, where full COGS is the sum of product cost, inbound fulfillment cost, outbound shipping cost, and payment processing fees. [^margin-standard]
+
+```
+gross_margin(period) = revenue(period) - cogs_full(period)
+```
+
+The sanctioned computation is [`computations/gross-margin-period.md`](../computations/gross-margin-period.md). Consumers MUST run and attest that computation.
+
+# What changed in FY2026
+
+Prior to 2026-02-01, Acme's gross-margin definition included only product cost, excluding fulfillment, shipping, and payment fees. That legacy definition is preserved in [`metrics/gross-margin-legacy.md`](./gross-margin-legacy.md) as `status: deprecated` for historical query reproducibility.
+
+The switch reduced reported gross margin by roughly 4-6 percentage points depending on category. It also brought the number in line with the general ledger, closing a long-standing reconciliation gap.
+
+# Trust and freshness
+
+- **Verified:** VP Finance sign-off on 2026-07-01, against the FY2026 margin standard.
+- **Stale after 2026-12-31:** the cost-allocation standard is reviewed annually. Consumers must re-verify against the FY2027 standard before serving.
+
+[^margin-standard]: Cost Allocation & Margin Standard (FY2026)
+[^revenue-policy]: Revenue Recognition Policy (FY2026)
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (flow_sequence
+          (plain_scalar)
+          (plain_scalar)
+          (plain_scalar)))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (flow_mapping
+          (flow_pair
+            key: (plain_scalar)
+            value: (plain_scalar))
+          (flow_pair
+            key: (plain_scalar)
+            value: (plain_scalar))))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (flow_mapping
+              (flow_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (flow_pair
+                key: (plain_scalar)
+                value: (plain_scalar))))))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (double_quote_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (double_quote_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (double_quote_scalar))))))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))))
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))))))))
+  body: (body
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline))
+      (paragraph
+        (inline
+          (strong_emphasis
+            (emphasis_delimiter)
+            (emphasis_delimiter)
+            (emphasis_delimiter)
+            (emphasis_delimiter))
+          (inline_link
+            (link_text
+              (code_span
+                (code_span_delimiter)
+                (code_span_delimiter)))
+            (link_destination))))
+      (paragraph
+        (inline
+          (inline_link
+            (link_text)
+            (link_destination))
+          (strong_emphasis
+            (emphasis_delimiter)
+            (emphasis_delimiter)
+            (emphasis_delimiter)
+            (emphasis_delimiter))
+          (footnote_reference
+            label: (footnote_label))))
+      (fenced_code_block
+        (fenced_code_block_delimiter)
+        (block_continuation)
+        (code_fence_content
+          (block_continuation))
+        (fenced_code_block_delimiter))
+      (paragraph
+        (inline
+          (inline_link
+            (link_text
+              (code_span
+                (code_span_delimiter)
+                (code_span_delimiter)))
+            (link_destination)))))
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline))
+      (paragraph
+        (inline
+          (inline_link
+            (link_text
+              (code_span
+                (code_span_delimiter)
+                (code_span_delimiter)))
+            (link_destination))
+          (code_span
+            (code_span_delimiter)
+            (code_span_delimiter))))
+      (paragraph
+        (inline)))
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline))
+      (list
+        (list_item
+          (list_marker_minus)
+          (paragraph
+            (inline
+              (strong_emphasis
+                (emphasis_delimiter)
+                (emphasis_delimiter)
+                (emphasis_delimiter)
+                (emphasis_delimiter)))))
+        (list_item
+          (list_marker_minus)
+          (paragraph
+            (inline
+              (strong_emphasis
+                (emphasis_delimiter)
+                (emphasis_delimiter)
+                (emphasis_delimiter)
+                (emphasis_delimiter)))
+            (block_continuation))))
+      (footnote_definition
+        label: (footnote_label)
+        (paragraph
+          (inline)))
+      (footnote_definition
+        label: (footnote_label)
+        (paragraph
+          (inline))))))
+
+================================================================================
+Attested computation: acme_retail/computations/revenue-ytd.md
+================================================================================
+---
+type: Attested Computation
+title: Revenue for a fiscal year
+description: Sanctioned SQL that produces the recognized-revenue figure for a given fiscal year, per Acme's FY2026 Revenue Recognition Policy.
+tags: [finance, revenue, attested]
+runtime: bigquery
+parameters:
+  - { name: year, type: integer, required: true }
+executor:
+  resource: skills/run-on-bq.md
+  receipt: [job_id, executed_sql, result]
+attester:
+  resource: attesters/sql_equality.py
+generated: { by: reference_agent/gemini-2.5-pro, at: 2026-06-30T14:00:00Z }
+verified:
+  - { by: human:jsmith@acme, at: 2026-07-01T09:00:00Z }
+status: stable
+stale_after: 2026-12-31T00:00:00Z
+sources:
+  - id: revenue-policy
+    resource: policies/revenue-recognition.md
+    title: Revenue Recognition Policy (FY2026)
+    author: human:jsmith@acme
+    last_modified: 2026-06-15T00:00:00Z
+  - id: orders-table
+    resource: tables/orders.md
+    title: Customer Orders (BigQuery table)
+    author: team:data-platform
+    last_modified: 2026-07-01T00:00:00Z
+---
+
+# Computation
+
+```sql
+SELECT
+  SUM(
+    CASE
+      WHEN o.currency = 'USD' THEN o.net_amount
+      ELSE o.net_amount * fx.rate_to_usd
+    END
+  ) AS revenue_usd
+FROM `acme.sales.orders` AS o
+LEFT JOIN `acme.finance.fx_daily_rates` AS fx
+  ON fx.currency = o.currency
+  AND fx.rate_date = DATE(o.order_ts)
+WHERE o.order_status = 'delivered'
+  AND DATE_DIFF(CURRENT_DATE(), DATE(o.order_ts), DAY) >= 30
+  AND EXTRACT(YEAR FROM o.order_ts) = @year
+```
+
+This computation implements the four rules of the FY2026 Revenue Recognition Policy: [^revenue-policy]
+
+1. **Recognition trigger:** `order_status = 'delivered'` AND the 30-day return window has closed.
+2. **Recognized amount:** `net_amount` (excludes shipping and tax).
+3. **Currency:** non-USD orders convert at the `order_ts` daily rate.
+4. **Fiscal year:** calendar year from `order_ts`.
+
+# What the attester checks
+
+`attesters/sql_equality.py` receives the receipt returned by `skills/run-on-bq.md` and verifies two things:
+
+1. **Provenance:** `receipt.executed_sql`, canonicalized (whitespace, comment stripping, keyword casing), equals the SQL above canonicalized the same way. Any rewrite (a swapped table, an added filter, a dropped JOIN) fails the check.
+2. **Fidelity:** the value the caller is about to display equals `receipt.result[0]`.
+
+A run whose SQL does not match is treated as unattested; the consumer MUST refuse to display the value.
+
+# Freshness
+
+`stale_after: 2026-12-31T00:00:00Z` mirrors the revenue-recognition policy's annual review cycle. On 2027-01-01, a consumer running this computation SHOULD flag the result for re-verification before serving it, per the memory-aware consumer contract.
+
+[^revenue-policy]: Revenue Recognition Policy (FY2026)
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (flow_sequence
+          (plain_scalar)
+          (plain_scalar)
+          (plain_scalar)))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (flow_mapping
+              (flow_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (flow_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (flow_pair
+                key: (plain_scalar)
+                value: (plain_scalar))))))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_mapping
+          (block_mapping_pair
+            key: (plain_scalar)
+            value: (plain_scalar))
+          (block_mapping_pair
+            key: (plain_scalar)
+            value: (flow_sequence
+              (plain_scalar)
+              (plain_scalar)
+              (plain_scalar)))))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_mapping
+          (block_mapping_pair
+            key: (plain_scalar)
+            value: (plain_scalar))))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (flow_mapping
+          (flow_pair
+            key: (plain_scalar)
+            value: (plain_scalar))
+          (flow_pair
+            key: (plain_scalar)
+            value: (plain_scalar))))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (flow_mapping
+              (flow_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (flow_pair
+                key: (plain_scalar)
+                value: (plain_scalar))))))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))))
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))))))))
+  body: (body
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline))
+      (fenced_code_block
+        (fenced_code_block_delimiter)
+        (info_string
+          (language))
+        (block_continuation)
+        (code_fence_content
+          (block_continuation)
+          (block_continuation)
+          (block_continuation)
+          (block_continuation)
+          (block_continuation)
+          (block_continuation)
+          (block_continuation)
+          (block_continuation)
+          (block_continuation)
+          (block_continuation)
+          (block_continuation)
+          (block_continuation)
+          (block_continuation)
+          (block_continuation))
+        (fenced_code_block_delimiter))
+      (paragraph
+        (inline
+          (footnote_reference
+            label: (footnote_label))))
+      (list
+        (list_item
+          (list_marker_dot)
+          (paragraph
+            (inline
+              (strong_emphasis
+                (emphasis_delimiter)
+                (emphasis_delimiter)
+                (emphasis_delimiter)
+                (emphasis_delimiter))
+              (code_span
+                (code_span_delimiter)
+                (code_span_delimiter)))))
+        (list_item
+          (list_marker_dot)
+          (paragraph
+            (inline
+              (strong_emphasis
+                (emphasis_delimiter)
+                (emphasis_delimiter)
+                (emphasis_delimiter)
+                (emphasis_delimiter))
+              (code_span
+                (code_span_delimiter)
+                (code_span_delimiter)))))
+        (list_item
+          (list_marker_dot)
+          (paragraph
+            (inline
+              (strong_emphasis
+                (emphasis_delimiter)
+                (emphasis_delimiter)
+                (emphasis_delimiter)
+                (emphasis_delimiter))
+              (code_span
+                (code_span_delimiter)
+                (code_span_delimiter)))))
+        (list_item
+          (list_marker_dot)
+          (paragraph
+            (inline
+              (strong_emphasis
+                (emphasis_delimiter)
+                (emphasis_delimiter)
+                (emphasis_delimiter)
+                (emphasis_delimiter))
+              (code_span
+                (code_span_delimiter)
+                (code_span_delimiter)))
+            (block_continuation)))))
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline))
+      (paragraph
+        (inline
+          (code_span
+            (code_span_delimiter)
+            (code_span_delimiter))
+          (code_span
+            (code_span_delimiter)
+            (code_span_delimiter))))
+      (list
+        (list_item
+          (list_marker_dot)
+          (paragraph
+            (inline
+              (strong_emphasis
+                (emphasis_delimiter)
+                (emphasis_delimiter)
+                (emphasis_delimiter)
+                (emphasis_delimiter))
+              (code_span
+                (code_span_delimiter)
+                (code_span_delimiter)))))
+        (list_item
+          (list_marker_dot)
+          (paragraph
+            (inline
+              (strong_emphasis
+                (emphasis_delimiter)
+                (emphasis_delimiter)
+                (emphasis_delimiter)
+                (emphasis_delimiter))
+              (code_span
+                (code_span_delimiter)
+                (code_span_delimiter)))
+            (block_continuation))))
+      (paragraph
+        (inline)))
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline))
+      (paragraph
+        (inline
+          (code_span
+            (code_span_delimiter)
+            (code_span_delimiter))))
+      (footnote_definition
+        label: (footnote_label)
+        (paragraph
+          (inline))))))
+
+================================================================================
+Table concept with a Schema table: ga4/tables/events_.md
+================================================================================
+---
+type: BigQuery Table
+resource: https://bigquery.googleapis.com/v2/projects/bigquery-public-data/datasets/ga4_obfuscated_sample_ecommerce/tables/events_*
+title: GA4 Events Export
+description: Google Analytics 4 event-level daily sharded export tables containing
+  user interaction logs.
+tags:
+- analytics
+- e-commerce
+- ga4
+- sharded-tables
+generated:
+  by: reference_agent/gemini-3.5-flash
+  at: '2026-07-10T21:15:20+00:00'
+sources:
+- title: 'Google Analytics Help: BigQuery Export Schema'
+  id: ga4-export-docs
+  resource: https://support.google.com/analytics/answer/7029846
+- title: BigQuery Table Metadata
+  id: metadata
+  resource: https://bigquery.googleapis.com/v2/projects/bigquery-public-data/datasets/ga4_obfuscated_sample_ecommerce/tables/events_*
+- title: Sample queries for audiences based on BigQuery data - Analytics Help
+  resource: https://support.google.com/analytics/answer/9037342
+  id: sample_queries
+---
+
+The `events_` table family contains obfuscated Google Analytics 4 (GA4) event-level export data from the Google Merchandise Store.[^ga4-export-docs] It is structured as a series of daily sharded tables, starting from `events_20201101` through `events_20210131`.[^metadata] Each row represents a single event (e.g., `page_view`, `scroll`, `session_start`, `view_item`, `purchase`) triggered by a user's interaction with the online storefront.
+
+The data is useful for behavioral analysis, funnel conversion mapping, and e-commerce tracking. Key user attributes such as geographic location, device platform, and acquisition traffic source are nested within top-level records. Additionally, parameters associated with specific events or products are stored in repeated record fields (`event_params` and `items`), requiring flatting or unnesting operations during querying.
+
+# Schema
+
+Below is the flattened schema representation for the sharded daily events table.
+
+| Field Name | Type | Mode | Description |
+| :--- | :--- | :--- | :--- |
+| **event_date** | STRING | NULLABLE | The date on which the event was logged (formatted as `YYYYMMDD`). |
+| **event_timestamp** | INTEGER | NULLABLE | The POSIX timestamp (in microseconds) when the event was registered. |
+| **event_name** | STRING | NULLABLE | The name of the event (e.g., `page_view`, `purchase`, `session_start`). |
+| **event_params** | RECORD | REPEATED | Key-value parameters associated with the event. |
+| *event_params.key* | STRING | NULLABLE | The name of the parameter. |
+| *event_params.value* | RECORD | NULLABLE | The value of the parameter, nested by data type. |
+| *event_params.value.string_value* | STRING | NULLABLE | Parameter value if it is a string. |
+| *event_params.value.int_value* | INTEGER | NULLABLE | Parameter value if it is an integer. |
+| *event_params.value.float_value* | FLOAT | NULLABLE | Parameter value if it is a float. |
+| *event_params.value.double_value* | FLOAT | NULLABLE | Parameter value if it is a double. |
+| **event_previous_timestamp** | INTEGER | NULLABLE | The timestamp of the previous event (in microseconds). |
+| **event_value_in_usd** | FLOAT | NULLABLE | The monetary value of the event, converted to USD. |
+| **event_bundle_sequence_id** | INTEGER | NULLABLE | The sequence ID of the upload bundle. |
+| **event_server_timestamp_offset** | INTEGER | NULLABLE | Difference between server time and device logging time. |
+| **user_id** | STRING | NULLABLE | The unique identifier of the user (when signed in). |
+| **user_pseudo_id** | STRING | NULLABLE | The pseudonymous consumer device identifier (e.g. GA client ID). |
+| **privacy_info** | RECORD | NULLABLE | Consent and privacy settings. |
+| *privacy_info.analytics_storage* | INTEGER | NULLABLE | Status of analytics storage consent. |
+| *privacy_info.ads_storage* | INTEGER | NULLABLE | Status of ads storage consent. |
+| *privacy_info.uses_transient_token* | STRING | NULLABLE | Whether a transient token is used. |
+| **user_properties** | RECORD | REPEATED | Custom user properties. |
+| *user_properties.key* | INTEGER | NULLABLE | Property name/key. |
+| *user_properties.value* | RECORD | NULLABLE | Nested custom value and update timestamp. |
+| **user_first_touch_timestamp** | INTEGER | NULLABLE | The time (in microseconds) when the user first interacted with the site. |
+| **user_ltv** | RECORD | NULLABLE | User lifetime value details. |
+| *user_ltv.revenue* | FLOAT | NULLABLE | Total revenue attributed to the user over time. |
+| *user_ltv.currency* | STRING | NULLABLE | The currency of the lifetime revenue value. |
+| **device** | RECORD | NULLABLE | Device information of the visitor. |
+| *device.category* | STRING | NULLABLE | Device category (e.g., `mobile`, `desktop`, `tablet`). |
+| *device.mobile_brand_name* | STRING | NULLABLE | Mobile device brand name (e.g., `Apple`, `Samsung`). |
+| *device.mobile_model_name* | STRING | NULLABLE | Mobile model name. |
+| *device.mobile_marketing_name* | STRING | NULLABLE | Device marketing name. |
+| *device.operating_system* | STRING | NULLABLE | Operating system name (e.g., `iOS`, `Android`, `Web`). |
+| *device.operating_system_version* | STRING | NULLABLE | OS version. |
+| *device.language* | STRING | NULLABLE | Browser/device language code. |
+| *device.web_info.browser* | STRING | NULLABLE | Web browser name. |
+| *device.web_info.browser_version* | STRING | NULLABLE | Web browser version. |
+| **geo** | RECORD | NULLABLE | Geographical information derived from IP addresses. |
+| *geo.continent* | STRING | NULLABLE | Continent name. |
+| *geo.sub_continent* | STRING | NULLABLE | Sub-continent name. |
+| *geo.country* | STRING | NULLABLE | Country name. |
+| *geo.region* | STRING | NULLABLE | Region or state name. |
+| *geo.city* | STRING | NULLABLE | City name. |
+| *geo.metro* | STRING | NULLABLE | Metro area name. |
+| **app_info** | RECORD | NULLABLE | Application specific information. |
+| **traffic_source** | RECORD | NULLABLE | User acquisition source. |
+| *traffic_source.medium* | STRING | NULLABLE | The medium (e.g., `organic`, `referral`, `cpc`). |
+| *traffic_source.name* | STRING | NULLABLE | The campaign name. |
+| *traffic_source.source* | STRING | NULLABLE | The source (e.g., `google`, `direct`). |
+| **stream_id** | INTEGER | NULLABLE | Data stream ID. |
+| **platform** | STRING | NULLABLE | The collection platform (e.g., `WEB`, `IOS`, `ANDROID`). |
+| **event_dimensions** | RECORD | NULLABLE | Event-level metadata dimensions. |
+| *event_dimensions.hostname* | STRING | NULLABLE | Target hostname where the event occurred. |
+| **ecommerce** | RECORD | NULLABLE | Order level transaction details. |
+| *ecommerce.total_item_quantity* | INTEGER | NULLABLE | Total items in the transaction. |
+| *ecommerce.purchase_revenue_in_usd* | FLOAT | NULLABLE | Revenue of the transaction converted to USD. |
+| *ecommerce.transaction_id* | STRING | NULLABLE | Transaction identifier. |
+| **items** | RECORD | REPEATED | Product-level attributes for the items involved in the event. |
+| *items.item_id* | STRING | NULLABLE | Product ID or SKU. |
+| *items.item_name* | STRING | NULLABLE | Name of the product. |
+| *items.item_brand* | STRING | NULLABLE | Brand of the product. |
+| *items.price_in_usd* | FLOAT | NULLABLE | Unit price in USD. |
+| *items.quantity* | INTEGER | NULLABLE | Quantity of items. |
+
+# Common query patterns
+
+### 1. Count events and active users by event name
+This query counts the total events logged and counts distinct users (`user_pseudo_id`) for each event type over the full range of tables.
+
+```sql
+SELECT
+  event_name,
+  COUNT(1) AS event_count,
+  COUNT(DISTINCT user_pseudo_id) AS unique_users
+FROM
+  `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`
+WHERE
+  _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+GROUP BY
+  1
+ORDER BY
+  event_count DESC;
+```
+
+### 2. Extract nested page_location from event_params
+Since `event_params` is a repeated record (ARRAY), you must unnest it or filter using a subquery to extract a specific parameter like `page_location` for page views.
+
+```sql
+SELECT
+  event_date,
+  (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'page_location') AS page_path,
+  COUNT(1) AS page_views
+FROM
+  `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`
+WHERE
+  event_name = 'page_view'
+  AND _TABLE_SUFFIX BETWEEN '20210101' AND '20210115'
+GROUP BY
+  1, 2
+ORDER BY
+  page_views DESC;
+```
+
+### 3. Compute top selling products from items array
+To analyze product sales, we unnest the repeated `items` record structure on purchase events and aggregate quantities.
+
+```sql
+SELECT
+  item.item_id,
+  item.item_name,
+  SUM(item.quantity) AS units_sold,
+  ROUND(SUM(item.item_revenue_in_usd), 2) AS total_revenue_usd
+FROM
+  `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+  UNNEST(items) AS item
+WHERE
+  event_name = 'purchase'
+  AND _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+GROUP BY
+  1, 2
+ORDER BY
+  total_revenue_usd DESC
+LIMIT 10;
+```
+
+# Metrics
+The following predefined and custom audience cohort metrics can be derived from the events log table:
+* [Purchasers](../references/metrics/purchasers.md) — Users who have logged either `in_app_purchase` or `purchase`.
+* [N-Day Active Users](../references/metrics/n_day_active_users.md) — Users who have logged at least one event with `engagement_time_msec > 0` in the last N days.
+* [N-Day Inactive Users](../references/metrics/n_day_inactive_users.md) — Active users from the last M days who have not logged any event with `engagement_time_msec > 0` in the last N days (M > N).
+* [Frequently Active Users](../references/metrics/frequently_active_users.md) — Users who have logged at least one event with `engagement_time_msec > 0` on N of the last M days.
+* [Highly Active Users](../references/metrics/highly_active_users.md) — Users who have been active/engaged for more than N minutes in the last M days.
+* [Acquired Users](../references/metrics/acquired_users.md) — Users acquired via a specific campaign source, medium, and name.
+* [Google Acquired Cohorts](../references/metrics/google_acquired_cohorts.md) — Users acquired in a specific weekly cohort filtered by Google campaign source.
+
+[^ga4-export-docs]: [Google Analytics Help: BigQuery Export Schema](https://support.google.com/analytics/answer/7029846)
+[^metadata]: Source dataset `ga4_obfuscated_sample_ecommerce` table list metadata.
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (plain_scalar))
+          (block_sequence_item
+            (plain_scalar))
+          (block_sequence_item
+            (plain_scalar))
+          (block_sequence_item
+            (plain_scalar))))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_mapping
+          (block_mapping_pair
+            key: (plain_scalar)
+            value: (plain_scalar))
+          (block_mapping_pair
+            key: (plain_scalar)
+            value: (single_quote_scalar))))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (single_quote_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))))
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))))
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))))))))
+  body: (body
+    (paragraph
+      (inline
+        (code_span
+          (code_span_delimiter)
+          (code_span_delimiter))
+        (footnote_reference
+          label: (footnote_label))
+        (code_span
+          (code_span_delimiter)
+          (code_span_delimiter))
+        (code_span
+          (code_span_delimiter)
+          (code_span_delimiter))
+        (footnote_reference
+          label: (footnote_label))
+        (code_span
+          (code_span_delimiter)
+          (code_span_delimiter))
+        (code_span
+          (code_span_delimiter)
+          (code_span_delimiter))
+        (code_span
+          (code_span_delimiter)
+          (code_span_delimiter))
+        (code_span
+          (code_span_delimiter)
+          (code_span_delimiter))
+        (code_span
+          (code_span_delimiter)
+          (code_span_delimiter))))
+    (paragraph
+      (inline
+        (code_span
+          (code_span_delimiter)
+          (code_span_delimiter))
+        (code_span
+          (code_span_delimiter)
+          (code_span_delimiter))))
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline))
+      (paragraph
+        (inline))
+      (pipe_table
+        (pipe_table_header
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_delimiter_row
+          (pipe_table_delimiter_cell
+            (pipe_table_align_left))
+          (pipe_table_delimiter_cell
+            (pipe_table_align_left))
+          (pipe_table_delimiter_cell
+            (pipe_table_align_left))
+          (pipe_table_delimiter_cell
+            (pipe_table_align_left)))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (strong_emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))
+        (pipe_table_row
+          (pipe_table_cell
+            (emphasis
+              (emphasis_delimiter)
+              (emphasis_delimiter)))
+          (pipe_table_cell)
+          (pipe_table_cell)
+          (pipe_table_cell))))
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline))
+      (section
+        (atx_heading
+          (atx_h3_marker)
+          heading_content: (inline))
+        (paragraph
+          (inline
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))))
+        (fenced_code_block
+          (fenced_code_block_delimiter)
+          (info_string
+            (language))
+          (block_continuation)
+          (code_fence_content
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation))
+          (fenced_code_block_delimiter)))
+      (section
+        (atx_heading
+          (atx_h3_marker)
+          heading_content: (inline))
+        (paragraph
+          (inline
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))))
+        (fenced_code_block
+          (fenced_code_block_delimiter)
+          (info_string
+            (language))
+          (block_continuation)
+          (code_fence_content
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation))
+          (fenced_code_block_delimiter)))
+      (section
+        (atx_heading
+          (atx_h3_marker)
+          heading_content: (inline))
+        (paragraph
+          (inline
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))))
+        (fenced_code_block
+          (fenced_code_block_delimiter)
+          (info_string
+            (language))
+          (block_continuation)
+          (code_fence_content
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation)
+            (block_continuation))
+          (fenced_code_block_delimiter))))
+    (section
+      (atx_heading
+        (atx_h1_marker)
+        heading_content: (inline))
+      (paragraph
+        (inline))
+      (list
+        (list_item
+          (list_marker_star)
+          (paragraph
+            (inline
+              (inline_link
+                (link_text)
+                (link_destination))
+              (code_span
+                (code_span_delimiter)
+                (code_span_delimiter))
+              (code_span
+                (code_span_delimiter)
+                (code_span_delimiter)))))
+        (list_item
+          (list_marker_star)
+          (paragraph
+            (inline
+              (inline_link
+                (link_text)
+                (link_destination))
+              (code_span
+                (code_span_delimiter)
+                (code_span_delimiter)))))
+        (list_item
+          (list_marker_star)
+          (paragraph
+            (inline
+              (inline_link
+                (link_text)
+                (link_destination))
+              (code_span
+                (code_span_delimiter)
+                (code_span_delimiter)))))
+        (list_item
+          (list_marker_star)
+          (paragraph
+            (inline
+              (inline_link
+                (link_text)
+                (link_destination))
+              (code_span
+                (code_span_delimiter)
+                (code_span_delimiter)))))
+        (list_item
+          (list_marker_star)
+          (paragraph
+            (inline
+              (inline_link
+                (link_text)
+                (link_destination)))))
+        (list_item
+          (list_marker_star)
+          (paragraph
+            (inline
+              (inline_link
+                (link_text)
+                (link_destination)))))
+        (list_item
+          (list_marker_star)
+          (paragraph
+            (inline
+              (inline_link
+                (link_text)
+                (link_destination)))
+            (block_continuation))))
+      (footnote_definition
+        label: (footnote_label)
+        (paragraph
+          (inline
+            (inline_link
+              (link_text)
+              (link_destination)))))
+      (footnote_definition
+        label: (footnote_label)
+        (paragraph
+          (inline
+            (code_span
+              (code_span_delimiter)
+              (code_span_delimiter))))))))

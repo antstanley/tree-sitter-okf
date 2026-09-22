@@ -28,7 +28,7 @@
       }
     ],
     "links": {
-      "repository": "https://github.com/tree-sitter-okf/tree-sitter-okf",
+      "repository": "https://github.com/antstanley/tree-sitter-okf",
       "okf-specification": "https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/main/SPEC.md"
     }
   },

@@ -1,0 +1,316 @@
+================================================================================
+Plain scalars keep their bytes: no type resolution (spec D3)
+================================================================================
+---
+usage_count: 1240
+okf_version: 0.2
+verified_flag: yes
+empty_string: ''
+at: 2026-07-01T09:00:00Z
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (single_quote_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Plain scalars may contain & : * # and brackets inside
+================================================================================
+---
+title: Cost Allocation & Margin Standard (FY2026)
+author: human:jsmith@acme
+note: 5 * 3 = 15
+issue: see#42 in C#
+range: a[1]
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Plain scalar with a trailing comment (OKF 5.5)
+================================================================================
+---
+stale_after: 2026-12-31T00:00:00Z  # annual review
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar)))
+    (comment))
+  body: (body))
+
+================================================================================
+Folded multi-line plain scalar
+================================================================================
+---
+description: The events table containing
+  user interaction logs, one row per
+  event.
+title: Events
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Folded plain scalar across a blank line
+================================================================================
+---
+description: first paragraph
+
+  second paragraph
+type: Table
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Single-quoted scalars
+================================================================================
+---
+at: '2026-07-10T21:15:20+00:00'
+title: 'Google Analytics Help: BigQuery Export Schema'
+quote: 'it''s fine'
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (single_quote_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (single_quote_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (single_quote_scalar))))
+  body: (body))
+
+================================================================================
+Double-quoted scalars
+================================================================================
+---
+term: "revenue minus product cost only"
+escaped: "tab\tand \"quotes\""
+okf_version: "0.2"
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (double_quote_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (double_quote_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (double_quote_scalar))))
+  body: (body))
+
+================================================================================
+Multi-line double-quoted scalar
+================================================================================
+---
+why: "that is the pre-FY2026 definition
+  and it could not be reconciled"
+type: Metric
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (double_quote_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Literal and folded block scalars
+================================================================================
+---
+sql: |
+  SELECT 1
+  FROM t
+note: >-
+  folded
+  text
+type: Computation
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Block scalar with indentation indicator and blank lines
+================================================================================
+---
+sql: |2
+    indented
+
+  more
+keep: |+
+  kept
+
+type: X
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Empty values
+================================================================================
+---
+status:
+title:
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar))))
+  body: (body))
+
+================================================================================
+Values that look like other types stay plain scalars
+================================================================================
+---
+a: null
+b: ~
+c: true
+d: -5
+e: .5
+f: 0x1F
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))
