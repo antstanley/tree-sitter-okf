@@ -62,8 +62,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: stable
+      # vendor/ holds the pinned tree-sitter-markdown sources, not Go modules
       - run: go mod tidy
-      - run: go test ./...
+      - run: go test -mod=mod ./...
 
   swift:
     name: Swift binding
@@ -92,7 +93,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci --ignore-scripts
+      - run: npm ci
       - name: Generate with wikilink and tag dialects
         env:
           OKF_DIALECT_WIKILINK: "1"
