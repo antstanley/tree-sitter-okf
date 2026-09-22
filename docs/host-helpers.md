@@ -68,8 +68,11 @@ The frontmatter as a plain data value:
 * Scalars become **strings**. They are never typed (spec D3). Plain and
   quoted scalars are folded as YAML does: continuation lines are trimmed,
   a line break becomes a space, and each empty line becomes `\n`.
-  Double-quoted escapes are decoded. Block scalars apply `|`/`>`,
-  chomping and the indentation indicator.
+  Double-quoted escapes are decoded; an `\x`, `\u` or `\U` escape that is
+  not the right number of hex digits naming a code point (such as the `\U`
+  of `"C:\Users"`) is kept as written. Block scalars apply `|`/`>`,
+  chomping and the indentation indicator. CRLF line endings are normalised,
+  so no value contains the `\r` of a line break.
 * An empty value is `null`/`None`.
 * Duplicate keys: the last one wins (see `duplicateKeys`).
 
@@ -101,8 +104,13 @@ not a string.
 ### `isStale(tree, now)` / `is_stale` → `boolean | null`
 
 OKF §5.5. Returns `now >= stale_after`. Returns `null` when `stale_after` is
-absent or is not an ISO 8601 date or date-time (a bare date means midnight
-UTC). `now` defaults to the current time, and the fixtures pin it.
+absent or is not an ISO 8601 date or date-time: `YYYY-MM-DD`, optionally
+followed by `T`, `t` or a space, `hh:mm[:ss[.fraction]]` and `Z` or an
+offset (`±hh:mm` or `±hhmm`), with every field in range (so `2026-02-30`
+is `null`). A bare date means midnight UTC, and a date-time without an
+offset is UTC, so the answer never depends on the host's time zone. The
+fraction counts to the millisecond. `now` defaults to the current time,
+and the fixtures pin it.
 
 ### `generatedAt(tree)` / `generated_at` → `string | null`
 

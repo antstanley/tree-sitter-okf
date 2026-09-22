@@ -132,3 +132,79 @@ x: !<tag:yaml.org,2002:str> value
         (tag)
         value: (plain_scalar))))
   body: (body))
+
+================================================================================
+Anchor before a key does not shift the block (root)
+================================================================================
+---
+&x b: 1
+d:
+  e: 1
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        (anchor)
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_mapping
+          (block_mapping_pair
+            key: (plain_scalar)
+            value: (plain_scalar))))))
+  body: (body))
+
+================================================================================
+Anchor before a key does not shift the block (nested)
+================================================================================
+---
+a:
+  &x b: 1
+  c: 2
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_mapping
+          (block_mapping_pair
+            (anchor)
+            key: (plain_scalar)
+            value: (plain_scalar))
+          (block_mapping_pair
+            key: (plain_scalar)
+            value: (plain_scalar))))))
+  body: (body))
+
+================================================================================
+Anchor before a key in a compact mapping
+================================================================================
+---
+- &x a: 1
+  b: 2
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_sequence
+      (block_sequence_item
+        (block_mapping
+          (block_mapping_pair
+            (anchor)
+            key: (plain_scalar)
+            value: (plain_scalar))
+          (block_mapping_pair
+            key: (plain_scalar)
+            value: (plain_scalar))))))
+  body: (body))

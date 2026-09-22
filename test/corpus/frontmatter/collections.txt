@@ -597,3 +597,51 @@ just a scalar
   frontmatter: (frontmatter
     (plain_scalar))
   body: (body))
+
+================================================================================
+Tab-indented compact mapping keeps its sibling
+================================================================================
+---
+a:
+	- b: 1
+	  c: 2
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (block_sequence
+          (block_sequence_item
+            (block_mapping
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))
+              (block_mapping_pair
+                key: (plain_scalar)
+                value: (plain_scalar))))))))
+  body: (body))
+
+================================================================================
+Tab-indented root
+================================================================================
+---
+	a: 1
+	b: 2
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body))

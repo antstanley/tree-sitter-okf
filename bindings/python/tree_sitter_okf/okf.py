@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import posixpath
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 __all__ = [
@@ -46,6 +46,12 @@ def _named(node):
 
 def _text(node) -> str:
     return node.text.decode("utf-8")
+
+
+def _lf(text: str) -> str:
+    """CRLF line endings normalised: YAML values never contain the ``\\r``
+    of a line break."""
+    return text.replace("\r\n", "\n")
 
 
 # ----------------------------------------------------------- classification
@@ -95,11 +101,16 @@ _ESCAPES = {
 }
 
 
+_HEX = re.compile(r"^[0-9a-fA-F]+$")
+
+
 def _double_quoted(text: str) -> Optional[str]:
-    body = text[1:-1]
-    if re.search(r"\\\r?\n", body):
+    # ``\\\\`` is masked first, so an escaped backslash ending a line is not
+    # taken for an escaped line break
+    masked = text[1:-1].replace("\\\\", "\0\0")
+    if re.search(r"\\\n", masked):
         return None  # out of subset: the grammar made it yaml_unsupported
-    folded = _fold_flow(body.replace("\\\\", "\0\0")).replace("\0\0", "\\\\")
+    folded = _fold_flow(masked).replace("\0\0", "\\\\")
     out = []
     i = 0
     while i < len(folded):
@@ -111,8 +122,12 @@ def _double_quoted(text: str) -> Optional[str]:
                 i += 2
                 continue
             width = {"x": 2, "u": 4, "U": 8}.get(n)
-            if width:
-                out.append(chr(int(folded[i + 2:i + 2 + width], 16)))
+            digits = folded[i + 2:i + 2 + width] if width else ""
+            # an escape that is not `width` hex digits naming a code point is
+            # kept as written (the grammar accepts any escape)
+            if (width and len(digits) == width and _HEX.match(digits)
+                    and int(digits, 16) <= 0x10FFFF):
+                out.append(chr(int(digits, 16)))
                 i += 2 + width
                 continue
         out.append(c)
@@ -159,7 +174,7 @@ def _fold_block(lines):
 
 
 def _block_scalar(node) -> str:
-    text = _text(node)
+    text = _lf(_text(node))
     header, _, body = text.partition("\n")
     style = header[0]
     indicators = header[1:].split("#")[0].strip()
@@ -172,7 +187,7 @@ def _block_scalar(node) -> str:
         indents = [len(l) - len(l.lstrip(" ")) for l in lines if l.strip()]
         indent = min(indents) if indents else 0
     content = [l[indent:] if l.strip() else "" for l in lines]
-    rest = _source_bytes(node)[node.end_byte:].decode("utf-8").split("\n")[1:]
+    rest = _lf(_source_bytes(node)[node.end_byte:].decode("utf-8")).split("\n")[1:]
     trailing = 0
     for line in rest:
         if line.strip() == "":
@@ -220,11 +235,11 @@ class _ValueBuilder:
             self.unsupported = True
             return None
         if t == "plain_scalar":
-            return _fold_flow(_text(n))
+            return _fold_flow(_lf(_text(n)))
         if t == "single_quote_scalar":
-            return _fold_flow(_text(n)[1:-1]).replace("''", "'")
+            return _fold_flow(_lf(_text(n))[1:-1]).replace("''", "'")
         if t == "double_quote_scalar":
-            return _double_quoted(_text(n))
+            return _double_quoted(_lf(_text(n)))
         if t == "block_scalar":
             return _block_scalar(n)
         if t == "alias":
@@ -333,14 +348,36 @@ def status(tree) -> str:
     return s if isinstance(s, str) and s != "" else "stable"
 
 
+# ISO 8601 date or date-time, as YAML writes timestamps: `T`, `t` or a
+# space between date and time, an optional fraction, `Z` or an offset.
+_INSTANT = re.compile(
+    r"^(\d{4})-(\d{2})-(\d{2})(?:[Tt ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?"
+    r"(?:([Zz])|([+-])(\d{2}):?(\d{2}))?)?$"
+)
+
+
 def _instant(value: str) -> Optional[datetime]:
+    """An ISO 8601 date or date-time, or None.  A date is midnight UTC and a
+    date-time without an offset is UTC, so the answer never depends on the
+    host's time zone.  Out-of-range fields are None.  Same rules as okf.js
+    ``instant`` (which keeps millisecond precision, so the fraction is cut to
+    milliseconds here too)."""
+    m = _INSTANT.match(value)
+    if not m:
+        return None
+    year, month, day, hour, minute, second = (int(v or 0) for v in m.group(1, 2, 3, 4, 5, 6))
+    millis = int((m.group(7) or "").ljust(3, "0")[:3])
+    offset = 0
+    if m.group(9):
+        oh, om = int(m.group(10)), int(m.group(11))
+        if oh > 23 or om > 59:
+            return None
+        offset = (-1 if m.group(9) == "-" else 1) * (oh * 60 + om)
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return datetime(year, month, day, hour, minute, second, millis * 1000,
+                        tzinfo=timezone(timedelta(minutes=offset)))
     except ValueError:
         return None
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed
 
 
 def is_stale(tree, now: Optional[datetime] = None) -> Optional[bool]:

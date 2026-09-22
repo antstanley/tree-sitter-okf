@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+"""Pathological inputs that must stay ERROR-free and fast (spec P4, §9.3).
+
+Shapes too large for a corpus file:
+
+  deep       frontmatter nested past FM_MAX_DEPTH (48): the lines past the
+             limit become yaml_unsupported, the closing `---` is still
+             recognised and the body parses
+  delimiters a long run of `*`, `_` or `~` that nothing closes, before a
+             long paragraph: linear, not quadratic (delta I3)
+
+Usage: script/pathological
+"""
+
+import sys
+import time
+
+import tree_sitter
+import tree_sitter_okf
+
+parser = tree_sitter.Parser(tree_sitter.Language(tree_sitter_okf.language()))
+failures = []
+
+
+def has_error(node):
+    if node.is_error or node.is_missing:
+        return True
+    return any(has_error(c) for c in node.children)
+
+
+for depth in (47, 48, 80):
+    lines = ["---"] + [" " * i + f"k{i}:" for i in range(depth)]
+    lines += [" " * depth + "v: 1", "top: 2", "---", "body"]
+    tree = parser.parse(("\n".join(lines) + "\n").encode())
+    body = tree.root_node.child_by_field_name("body")
+    if has_error(tree.root_node) or body is None or body.named_child_count == 0:
+        failures.append(f"deep: {depth} levels gives ERROR or loses the body")
+
+times = {}
+for delimiter in "*_~":
+    for run in (2000, 4000):
+        source = (delimiter * run + "a" + " word" * 40_000 + "\n").encode()
+        start = time.perf_counter()
+        tree = parser.parse(source)
+        times[(delimiter, run)] = time.perf_counter() - start
+        if has_error(tree.root_node):
+            failures.append(f"delimiters: {run} x {delimiter!r} gives ERROR")
+    # doubling the run must not double the time: the paragraph is scanned
+    # once per run, not once per delimiter
+    small, large = times[(delimiter, 2000)], times[(delimiter, 4000)]
+    if large > 1.0 or large > 3 * small + 0.05:
+        failures.append(f"delimiters: {delimiter!r} run of 2000 {small:.3f}s, 4000 {large:.3f}s")
+
+for f in failures:
+    print(f"  {f}")
+print(f"pathological inputs: {len(failures)} failures")
+sys.exit(1 if failures else 0)

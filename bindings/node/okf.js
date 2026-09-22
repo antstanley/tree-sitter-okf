@@ -58,6 +58,23 @@ function conceptId(filePath, bundleRoot) {
 
 /* ------------------------------------------------------------ frontmatter */
 
+// A node's text with CRLF line endings normalised: YAML values never
+// contain the `\r` of a line break.
+function lf(text) {
+  return text.replace(/\r\n/g, '\n');
+}
+
+// Set a key as an own property: `__proto__` and the like are ordinary keys.
+function setKey(obj, key, value) {
+  Object.defineProperty(obj, key, { value, enumerable: true, writable: true, configurable: true });
+}
+
+// A key's value when the key is the mapping's own (never an inherited one
+// such as `constructor`).
+function own(obj, key) {
+  return obj && typeof obj === 'object' && Object.hasOwn(obj, key) ? obj[key] : undefined;
+}
+
 // YAML flow folding for plain and quoted scalars: lines are trimmed, a single
 // line break becomes a space, each empty line a newline.
 function foldFlow(text) {
@@ -85,9 +102,11 @@ const ESCAPES = {
 };
 
 function doubleQuotedValue(text) {
-  const body = text.slice(1, -1);
-  if (/\\\r?\n/.test(body)) return null; // out of subset: the grammar made it yaml_unsupported
-  const folded = foldFlow(body.replace(/\\\\/g, '\0\0')).replace(/\0\0/g, '\\\\');
+  // `\\` is masked first, so an escaped backslash ending a line is not
+  // taken for an escaped line break
+  const masked = text.slice(1, -1).replace(/\\\\/g, '\0\0');
+  if (/\\\n/.test(masked)) return null; // out of subset: the grammar made it yaml_unsupported
+  const folded = foldFlow(masked).replace(/\0\0/g, '\\\\');
   let out = '';
   for (let i = 0; i < folded.length; i++) {
     const c = folded[i];
@@ -99,8 +118,12 @@ function doubleQuotedValue(text) {
         continue;
       }
       const width = { x: 2, u: 4, U: 8 }[n];
-      if (width) {
-        out += String.fromCodePoint(parseInt(folded.slice(i + 2, i + 2 + width), 16));
+      const digits = width ? folded.slice(i + 2, i + 2 + width) : '';
+      // an escape that is not `width` hex digits naming a code point is
+      // kept as written (the grammar accepts any escape)
+      if (width && digits.length === width && /^[0-9a-fA-F]+$/.test(digits) &&
+          parseInt(digits, 16) <= 0x10ffff) {
+        out += String.fromCodePoint(parseInt(digits, 16));
         i += 1 + width;
         continue;
       }
@@ -144,7 +167,7 @@ function foldBlock(lines) {
 }
 
 function blockScalarValue(node) {
-  const text = node.text;
+  const text = lf(node.text);
   const newline = text.indexOf('\n');
   const header = newline < 0 ? text : text.slice(0, newline);
   const body = newline < 0 ? '' : text.slice(newline + 1);
@@ -162,8 +185,8 @@ function blockScalarValue(node) {
   }
   const content = lines.map((l) => (l.trim() ? l.slice(indent) : ''));
   // Trailing blank lines are not part of the token; they matter for `keep`.
-  const whole = node.tree.rootNode.text;
-  const rest = whole.slice(node.endIndex).split('\n').slice(1);
+  const whole = lf(node.tree.rootNode.text.slice(node.endIndex));
+  const rest = whole.split('\n').slice(1);
   let trailing = 0;
   for (const line of rest) {
     if (line.trim() === '') trailing += 1;
@@ -207,11 +230,11 @@ class ValueBuilder {
         this.unsupported = true;
         return null;
       case 'plain_scalar':
-        return foldFlow(n.text);
+        return foldFlow(lf(n.text));
       case 'single_quote_scalar':
-        return foldFlow(n.text.slice(1, -1)).replace(/''/g, "'");
+        return foldFlow(lf(n.text).slice(1, -1)).replace(/''/g, "'");
       case 'double_quote_scalar':
-        return doubleQuotedValue(n.text);
+        return doubleQuotedValue(lf(n.text));
       case 'block_scalar':
         return blockScalarValue(n);
       case 'alias':
@@ -226,7 +249,7 @@ class ValueBuilder {
           const keyNode = pair.childForFieldName('key');
           const valueNode = pair.childForFieldName('value');
           const props = namedChildren(pair).filter((c) => c.type === 'anchor' || c.type === 'tag');
-          out[this.node(keyNode)] = this.sequenceValue(valueNode ? [...props, valueNode] : props);
+          setKey(out, this.node(keyNode), this.sequenceValue(valueNode ? [...props, valueNode] : props));
         }
         return out;
       }
@@ -243,9 +266,9 @@ class ValueBuilder {
         for (const entry of namedChildren(n)) {
           if (entry.type === 'flow_pair') {
             const value = entry.childForFieldName('value');
-            out[this.node(entry.childForFieldName('key'))] = value ? this.node(value) : null;
+            setKey(out, this.node(entry.childForFieldName('key')), value ? this.node(value) : null);
           } else if (entry.type !== 'anchor' && entry.type !== 'tag') {
-            out[this.node(entry)] = null;
+            setKey(out, this.node(entry), null);
           }
         }
         return out;
@@ -260,7 +283,9 @@ class ValueBuilder {
           }
           if (entry.type === 'flow_pair') {
             const value = entry.childForFieldName('value');
-            out.push({ [this.node(entry.childForFieldName('key'))]: value ? this.node(value) : null });
+            const pair = {};
+            setKey(pair, this.node(entry.childForFieldName('key')), value ? this.node(value) : null);
+            out.push(pair);
           } else {
             out.push(this.sequenceValue([...pending, entry]));
           }
@@ -316,7 +341,7 @@ function fields(tree) {
  * Entries that are not mappings are kept out.
  */
 function verifiedEntries(tree) {
-  const verified = fields(tree).verified;
+  const verified = own(fields(tree), 'verified');
   if (verified === undefined || verified === null) return [];
   const list = Array.isArray(verified) ? verified : [verified];
   return list.filter((e) => e && typeof e === 'object' && !Array.isArray(e));
@@ -328,9 +353,9 @@ function verifiedEntries(tree) {
  * 'machine-confirmed'.
  */
 function trustTier(tree) {
-  if (!('verified' in fields(tree))) return 'unverified';
+  if (!Object.hasOwn(fields(tree), 'verified')) return 'unverified';
   const entries = verifiedEntries(tree);
-  if (entries.some((e) => typeof e.by === 'string' && e.by.startsWith('human:'))) {
+  if (entries.some((e) => typeof own(e, 'by') === 'string' && own(e, 'by').startsWith('human:'))) {
     return 'human-reviewed';
   }
   return 'machine-confirmed';
@@ -338,8 +363,36 @@ function trustTier(tree) {
 
 /** The lifecycle status (OKF §5.4): absent means 'stable'. */
 function status(tree) {
-  const s = fields(tree).status;
+  const s = own(fields(tree), 'status');
   return typeof s === 'string' && s !== '' ? s : 'stable';
+}
+
+// ISO 8601 date or date-time, as YAML writes timestamps: `T`, `t` or a
+// space between date and time, an optional fraction, `Z` or an offset.
+const INSTANT =
+  /^(\d{4})-(\d{2})-(\d{2})(?:[Tt ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?(?:([Zz])|([+-])(\d{2}):?(\d{2}))?)?$/;
+
+/**
+ * Milliseconds since the epoch for an ISO 8601 date or date-time, or null.
+ * A date is midnight UTC and a date-time without an offset is UTC, so the
+ * answer never depends on the host's time zone.  Out-of-range fields
+ * (month 13, February 30) are null.  Same rules as okf.py `_instant`.
+ */
+function instant(value) {
+  const m = INSTANT.exec(value);
+  if (!m) return null;
+  const [year, month, day, hour, minute, second] = m.slice(1, 7).map((v) => Number(v || 0));
+  const millis = Number((m[7] || '').padEnd(3, '0').slice(0, 3));
+  const offset = m[9] ? (m[9] === '-' ? -1 : 1) * (Number(m[10]) * 60 + Number(m[11])) : 0;
+  if (year < 1 || month < 1 || month > 12 || hour > 23 || minute > 59 || second > 59) {
+    return null;
+  }
+  if (m[10] !== undefined && (Number(m[10]) > 23 || Number(m[11]) > 59)) return null;
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day); // (Date.UTC would map 0-99 to 19xx)
+  date.setUTCHours(hour, minute, second, millis);
+  if (date.getUTCDate() !== day || date.getUTCMonth() !== month - 1) return null;
+  return date.getTime() - offset * 60000;
 }
 
 /**
@@ -347,10 +400,10 @@ function status(tree) {
  * Returns null when there is no `stale_after` or it is not a valid instant.
  */
 function isStale(tree, now = new Date()) {
-  const value = fields(tree).stale_after;
+  const value = own(fields(tree), 'stale_after');
   if (typeof value !== 'string') return null;
-  const at = Date.parse(value);
-  if (Number.isNaN(at)) return null;
+  const at = instant(value);
+  if (at === null) return null;
   return now.getTime() >= at;
 }
 
@@ -360,10 +413,13 @@ function isStale(tree, now = new Date()) {
  */
 function generatedAt(tree) {
   const f = fields(tree);
-  if (f.generated && typeof f.generated === 'object' && typeof f.generated.at === 'string') {
-    return f.generated.at;
+  const generated = own(f, 'generated');
+  if (generated && typeof generated === 'object' && typeof own(generated, 'at') === 'string') {
+    return own(generated, 'at');
   }
-  if (!('generated' in f) && typeof f.timestamp === 'string') return f.timestamp;
+  if (!Object.hasOwn(f, 'generated') && typeof own(f, 'timestamp') === 'string') {
+    return own(f, 'timestamp');
+  }
   return null;
 }
 
@@ -412,7 +468,7 @@ function duplicateKeys(tree) {
  */
 function citations(tree) {
   const root = rootOf(tree);
-  const sources = Array.isArray(fields(tree).sources) ? fields(tree).sources : [];
+  const sources = Array.isArray(own(fields(tree), 'sources')) ? own(fields(tree), 'sources') : [];
   const references = [];
   const definitions = [];
   const walk = (node) => {
@@ -428,7 +484,7 @@ function citations(tree) {
   const body = root.childForFieldName('body');
   if (body) walk(body);
   const ids = new Set(
-    sources.filter((s) => s && typeof s === 'object' && typeof s.id === 'string').map((s) => s.id),
+    sources.filter((s) => typeof own(s, 'id') === 'string').map((s) => own(s, 'id')),
   );
   const referenced = new Set(references.map((r) => r.label));
   return {
@@ -493,7 +549,7 @@ function conformance(filePath, tree, options = {}) {
       findings.push({ rule: 'frontmatter-unterminated', severity: 'error',
         message: 'the frontmatter block has no closing `---` (OKF §11.1)' });
     } else {
-      const type = fm.value && typeof fm.value === 'object' ? fm.value.type : undefined;
+      const type = own(fm.value, 'type');
       if (typeof type !== 'string' || type.trim() === '') {
         findings.push({ rule: 'type-required', severity: 'error',
           message: 'the frontmatter needs a non-empty `type` (OKF §11.2)' });

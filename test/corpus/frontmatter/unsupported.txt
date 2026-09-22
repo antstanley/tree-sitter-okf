@@ -287,3 +287,22 @@ type: Metric
         key: (plain_scalar)
         value: (plain_scalar))))
   body: (body))
+
+================================================================================
+A line shallower than an indented root is opaque
+================================================================================
+---
+  a: 1
+b: 2
+---
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))
+      (yaml_unsupported)))
+  body: (body))

@@ -212,6 +212,11 @@ static const uint8_t STATE_TABLE_ROW = 0x1 << 7;
 /* Inline scanner state bits (`Scanner.inline_state`). */
 // Current delimiter run is opening
 static const uint8_t STATE_EMPHASIS_DELIMITER_IS_OPEN = 0x1 << 2;
+// OKF: the rest of the current delimiter run is literal text (its first
+// delimiter found no closer in the paragraph, delta I3): each remaining
+// delimiter is emitted as punctuation without searching again, which would
+// make a long unclosed run quadratic.
+static const uint8_t STATE_LITERAL_RUN = 0x1 << 3;
 
 /* The kind of character before a position (`Scanner.prev_class`). */
 enum { CLASS_OTHER, CLASS_WHITESPACE, CLASS_PUNCTUATION };
@@ -294,6 +299,17 @@ typedef struct Scanner {
     bool fm_force_unsupported;
     uint8_t fm_line;
     uint8_t fm_depth;
+    // The current line's indentation: its column with tabs advancing to the
+    // next multiple of FM_TAB_WIDTH, and its length in characters.  A column
+    // later on the line is `fm_line_indent + (get_column - fm_line_chars)`,
+    // so mid-line columns and line indentation agree when tabs indent.
+    int16_t fm_line_indent;
+    uint16_t fm_line_chars;
+    // Anchors and tags before a node (`&a key: v`): the column of the first
+    // one (-1 when none) and whether it started its line.  The node that
+    // follows takes its position from them, not from where it itself starts.
+    int16_t fm_node_column;
+    bool fm_node_line_start;
     FmLevel fm_levels[FM_MAX_DEPTH];
 } Scanner;
 
@@ -328,7 +344,7 @@ static inline Block pop_block(Scanner *s) {
     return s->open_blocks.items[--s->open_blocks.size];
 }
 
-#define HEADER_SIZE 16
+#define HEADER_SIZE 22
 
 static unsigned serialize(Scanner *s, char *buffer) {
     unsigned size = 0;
@@ -343,7 +359,8 @@ static unsigned serialize(Scanner *s, char *buffer) {
     // open/close bit of a delimiter run means nothing once the run is over.
     buffer[size++] = (char)(s->num_emphasis_delimiters_left
                                 ? s->inline_state
-                                : (s->inline_state & ~STATE_EMPHASIS_DELIMITER_IS_OPEN));
+                                : (s->inline_state &
+                                   ~(STATE_EMPHASIS_DELIMITER_IS_OPEN | STATE_LITERAL_RUN)));
     buffer[size++] = (char)s->code_span_delimiter_length;
     buffer[size++] = (char)s->num_emphasis_delimiters_left;
     buffer[size++] = (char)s->prev_class;
@@ -351,9 +368,16 @@ static unsigned serialize(Scanner *s, char *buffer) {
     buffer[size++] = (char)((s->prev_column >> 8) & 0xff);
     buffer[size++] = (char)((s->fm_active ? 1 : 0) | (s->fm_root_known ? 2 : 0) |
                             (s->fm_unsupported_rest ? 4 : 0) |
-                            (s->fm_force_unsupported ? 8 : 0));
+                            (s->fm_force_unsupported ? 8 : 0) |
+                            (s->fm_node_line_start ? 16 : 0));
     buffer[size++] = (char)s->fm_line;
     buffer[size++] = (char)s->fm_depth;
+    buffer[size++] = (char)(s->fm_line_indent & 0xff);
+    buffer[size++] = (char)((s->fm_line_indent >> 8) & 0xff);
+    buffer[size++] = (char)(s->fm_line_chars & 0xff);
+    buffer[size++] = (char)((s->fm_line_chars >> 8) & 0xff);
+    buffer[size++] = (char)(s->fm_node_column & 0xff);
+    buffer[size++] = (char)((s->fm_node_column >> 8) & 0xff);
     size_t blocks = s->open_blocks.size;
     // The fixed header plus the frontmatter levels take at most
     // HEADER_SIZE + 3 * FM_MAX_DEPTH bytes; the block stack gets the rest.
@@ -391,6 +415,10 @@ static void deserialize(Scanner *s, const char *buffer, unsigned length) {
     s->fm_force_unsupported = false;
     s->fm_line = FM_MID_LINE;
     s->fm_depth = 1;
+    s->fm_line_indent = 0;
+    s->fm_line_chars = 0;
+    s->fm_node_column = -1;
+    s->fm_node_line_start = false;
     s->fm_levels[0].indent = 0;
     s->fm_levels[0].kind = FM_LEVEL_BLOCK;
     if (length < HEADER_SIZE) return;
@@ -412,8 +440,13 @@ static void deserialize(Scanner *s, const char *buffer, unsigned length) {
     s->fm_root_known = (flags & 2) != 0;
     s->fm_unsupported_rest = (flags & 4) != 0;
     s->fm_force_unsupported = (flags & 8) != 0;
+    s->fm_node_line_start = (flags & 16) != 0;
     s->fm_line = (uint8_t)buffer[size++];
     s->fm_depth = (uint8_t)buffer[size++];
+    s->fm_line_indent = (int16_t)((uint8_t)buffer[size] | ((uint8_t)buffer[size + 1] << 8));
+    s->fm_line_chars = (uint16_t)((uint8_t)buffer[size + 2] | ((uint8_t)buffer[size + 3] << 8));
+    s->fm_node_column = (int16_t)((uint8_t)buffer[size + 4] | ((uint8_t)buffer[size + 5] << 8));
+    size += 6;
     size_t blocks = (uint8_t)buffer[size] | ((size_t)(uint8_t)buffer[size + 1] << 8);
     size += 2;
     if (s->fm_depth < 1 || s->fm_depth > FM_MAX_DEPTH) s->fm_depth = 1;
@@ -878,14 +911,20 @@ static void prev_char_class(Scanner *s, const bool *valid_symbols, uint32_t colu
 // it is emitted here as its punctuation token so the scanner state records it
 // (delta I2).  Only the first character is emitted: the token ends where
 // `mark_end` was left, right after it.
+// With `whole_run`, the rest of the run is literal too (STATE_LITERAL_RUN).
 static bool emit_literal_delimiter(Scanner *s, TSLexer *lexer, const bool *valid_symbols,
                                    int32_t delimiter, uint8_t run, uint32_t column,
-                                   bool next_is_delimiter) {
+                                   bool next_is_delimiter, bool whole_run) {
     int token = punctuation_token(delimiter);
     bool followed = run > 1 || next_is_delimiter;
     if (s->simulate || !followed || token < 0 || !valid_symbols[token]) return false;
-    s->num_emphasis_delimiters_left = 0;
-    s->inline_state &= ~STATE_EMPHASIS_DELIMITER_IS_OPEN;
+    s->inline_state &= ~(STATE_EMPHASIS_DELIMITER_IS_OPEN | STATE_LITERAL_RUN);
+    if (whole_run && run > 1) {
+        s->num_emphasis_delimiters_left = run - 1;
+        s->inline_state |= STATE_LITERAL_RUN;
+    } else {
+        s->num_emphasis_delimiters_left = 0;
+    }
     note_prev(s, CLASS_PUNCTUATION, column + 1);
     lexer->result_symbol = (TSSymbol)token;
     return true;
@@ -927,8 +966,9 @@ static bool inline_emphasis(Scanner *s, TSLexer *lexer,
         int32_t delimiter = open == STRIKETHROUGH_OPEN ? '~'
                           : open == EMPHASIS_OPEN_STAR ? '*' : '_';
         if (!s->simulate && !closer_possible(s, lexer, delimiter)) {
+            // nothing after the run closes it, so nothing in it opens either
             return emit_literal_delimiter(s, lexer, valid_symbols, delimiter, run, column,
-                                          next_is_delimiter);
+                                          next_is_delimiter, true);
         }
         s->inline_state |= STATE_EMPHASIS_DELIMITER_IS_OPEN;
         lexer->result_symbol = open;
@@ -936,7 +976,7 @@ static bool inline_emphasis(Scanner *s, TSLexer *lexer,
     }
     int32_t delimiter = open == STRIKETHROUGH_OPEN ? '~' : open == EMPHASIS_OPEN_STAR ? '*' : '_';
     return emit_literal_delimiter(s, lexer, valid_symbols, delimiter, run, column,
-                                  next_is_delimiter);
+                                  next_is_delimiter, false);
 }
 
 // The rest of a delimiter run whose first character already decided open or
@@ -944,6 +984,21 @@ static bool inline_emphasis(Scanner *s, TSLexer *lexer,
 static bool inline_emphasis_continue(Scanner *s, TSLexer *lexer,
                                      const bool *valid_symbols, TokenType open,
                                      TokenType close, uint32_t column) {
+    if (s->inline_state & STATE_LITERAL_RUN) {
+        int32_t delimiter = open == STRIKETHROUGH_OPEN ? '~'
+                          : open == EMPHASIS_OPEN_STAR ? '*' : '_';
+        int token = punctuation_token(delimiter);
+        if (s->simulate || token < 0 || !valid_symbols[token]) {
+            // cannot continue here: the run is decided afresh
+            s->num_emphasis_delimiters_left = 0;
+            s->inline_state &= ~STATE_LITERAL_RUN;
+            return false;
+        }
+        note_prev(s, CLASS_PUNCTUATION, column + 1);
+        if (--s->num_emphasis_delimiters_left == 0) s->inline_state &= ~STATE_LITERAL_RUN;
+        lexer->result_symbol = (TSSymbol)token;
+        return true;
+    }
     note_prev(s, CLASS_PUNCTUATION, column + 1);
     if ((s->inline_state & STATE_EMPHASIS_DELIMITER_IS_OPEN) &&
         valid_symbols[open]) {
@@ -2574,6 +2629,10 @@ static void fm_reset(Scanner *s) {
     s->fm_force_unsupported = false;
     s->fm_line = FM_MID_LINE;
     s->fm_depth = 1;
+    s->fm_line_indent = 0;
+    s->fm_line_chars = 0;
+    s->fm_node_column = -1;
+    s->fm_node_line_start = false;
     s->fm_levels[0].indent = 0;
     s->fm_levels[0].kind = FM_LEVEL_BLOCK;
 }
@@ -2590,22 +2649,50 @@ static inline bool fm_is_flow_indicator(int32_t c) {
 
 static inline FmLevel *fm_top(Scanner *s) { return &s->fm_levels[s->fm_depth - 1]; }
 
-static void fm_push(Scanner *s, int16_t indent, FmLevelKind kind) {
-    if (s->fm_depth < FM_MAX_DEPTH) {
-        s->fm_levels[s->fm_depth].indent = indent;
-        s->fm_levels[s->fm_depth].kind = (uint8_t)kind;
-        s->fm_depth++;
-    } else {
-        // Deeper than any plausible frontmatter.  Re-use the top level, which
-        // mis-nests pathological input but never fails (P4).
-        fm_top(s)->indent = indent;
-    }
+// Open an indentation level.  Fails at FM_MAX_DEPTH: every caller then
+// declines to open the block (the line becomes opaque), because a level the
+// parser opens but the scanner does not track could never be closed, and
+// the closing `---` would not be recognised (P4).
+static bool fm_push(Scanner *s, int16_t indent, FmLevelKind kind) {
+    if (s->fm_depth >= FM_MAX_DEPTH) return false;
+    s->fm_levels[s->fm_depth].indent = indent;
+    s->fm_levels[s->fm_depth].kind = (uint8_t)kind;
+    s->fm_depth++;
+    return true;
 }
 
 static bool fm_emit(Scanner *s, TSLexer *lexer, TokenType token, FmLine line) {
     s->fm_line = (uint8_t)line;
+    if (token != FM_ANCHOR && token != FM_TAG) {
+        // the node the properties belonged to has been emitted (or the line
+        // ended): its position no longer applies
+        s->fm_node_column = -1;
+        s->fm_node_line_start = false;
+    }
     lexer->result_symbol = token;
     return true;
+}
+
+// The column of the cursor with tabs in the line's indentation counted as
+// in `fm_peek_next_line` (see `Scanner.fm_line_indent`).
+static int16_t fm_column(Scanner *s, TSLexer *lexer) {
+    return (int16_t)(s->fm_line_indent + (int32_t)lexer->get_column(lexer) - s->fm_line_chars);
+}
+
+// Skip a line's indentation at the cursor and record it as the current
+// line's (the cursor is at the start of the line).
+static void fm_skip_indentation(Scanner *s, TSLexer *lexer) {
+    int16_t indent = 0;
+    uint16_t chars = 0;
+    while (is_blank(lexer->lookahead)) {
+        indent = lexer->lookahead == '\t'
+                     ? (int16_t)((indent / FM_TAB_WIDTH + 1) * FM_TAB_WIDTH)
+                     : (int16_t)(indent + 1);
+        chars++;
+        fm_advance(lexer);
+    }
+    s->fm_line_indent = indent;
+    s->fm_line_chars = chars;
 }
 
 // The rest of the line as one opaque token.
@@ -2695,8 +2782,7 @@ static bool fm_plain(Scanner *s, TSLexer *lexer, const bool *valid_symbols,
     }
 
     if (colon) {
-        if (want_key) {
-            if (!line_start) fm_push(s, (int16_t)column, FM_LEVEL_BLOCK);
+        if (want_key && (line_start || fm_push(s, (int16_t)column, FM_LEVEL_BLOCK))) {
             return fm_emit(s, lexer, FM_KEY, FM_MID_LINE);
         }
         // `key: a: b` is not YAML; keep the whole value opaque.
@@ -2862,8 +2948,8 @@ static bool fm_quoted(Scanner *s, TSLexer *lexer, const bool *valid_symbols,
         goto garbage;
     }
     if (key) {
-        if (valid_symbols[FM_KEY]) {
-            if (!line_start) fm_push(s, (int16_t)column, FM_LEVEL_BLOCK);
+        if (valid_symbols[FM_KEY] &&
+            (line_start || fm_push(s, (int16_t)column, FM_LEVEL_BLOCK))) {
             return fm_emit(s, lexer, token, FM_MID_LINE);
         }
         goto garbage;
@@ -2994,8 +3080,17 @@ static bool fm_key_follows(TSLexer *lexer) {
 }
 
 // `&anchor`, `*alias`, `!tag` / `!!tag` / `!<verbatim>`.
+static bool fm_emit_property(Scanner *s, TSLexer *lexer, TokenType token,
+                             int16_t column, bool line_start) {
+    if (token != FM_ALIAS && s->fm_node_column < 0) {
+        s->fm_node_column = column;
+        s->fm_node_line_start = line_start;
+    }
+    return fm_emit(s, lexer, token, FM_MID_LINE);
+}
+
 static bool fm_property(Scanner *s, TSLexer *lexer, const bool *valid_symbols,
-                        TokenType token, bool in_flow) {
+                        TokenType token, bool in_flow, int16_t column, bool line_start) {
     fm_advance(lexer);
     size_t length = 0;
     if (token == FM_TAG && lexer->lookahead == '<') {
@@ -3017,7 +3112,7 @@ static bool fm_property(Scanner *s, TSLexer *lexer, const bool *valid_symbols,
         // a key on its line (`&a key: v`); a line that is only properties is
         // not an entry, so it is opaque.
         lexer->mark_end(lexer);
-        if (fm_key_follows(lexer)) return fm_emit(s, lexer, token, FM_MID_LINE);
+        if (fm_key_follows(lexer)) return fm_emit_property(s, lexer, token, column, line_start);
         if (valid_symbols[FM_UNSUPPORTED]) return fm_unsupported_to_eol(s, lexer);
         return false;
     }
@@ -3035,7 +3130,7 @@ static bool fm_property(Scanner *s, TSLexer *lexer, const bool *valid_symbols,
                 if (valid_symbols[FM_UNSUPPORTED]) return fm_unsupported_to_eol(s, lexer);
             }
         }
-        return fm_emit(s, lexer, token, FM_MID_LINE);
+        return fm_emit_property(s, lexer, token, column, line_start);
     }
     if (valid_symbols[FM_UNSUPPORTED]) return fm_unsupported_to_eol(s, lexer);
     return false;
@@ -3275,19 +3370,23 @@ static bool fm_flow_start(Scanner *s, TSLexer *lexer, const bool *valid_symbols,
 // The token that starts at the cursor (mid-line, or at a line start whose
 // structural token has been decided).
 static bool fm_token(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
-    bool line_start = s->fm_line != FM_MID_LINE;
+    // A node after anchors or tags stands where the first of them stands.
+    bool at_line_start = s->fm_line != FM_MID_LINE;
+    bool line_start = at_line_start || s->fm_node_line_start;
     bool in_flow = valid_symbols[FM_FLOW_PLAIN];
-    uint32_t column = lexer->get_column(lexer);
+    bool at_column_0 = lexer->get_column(lexer) == 0;
+    uint32_t column = (uint32_t)(s->fm_node_column >= 0 ? s->fm_node_column
+                                                        : fm_column(s, lexer));
     int32_t c = lexer->lookahead;
 
-    if (line_start && !s->fm_root_known) {
+    if (at_line_start && !s->fm_root_known) {
         s->fm_root_known = true;
         s->fm_levels[0].indent = (int16_t)column;
     }
 
     // `---` closes the frontmatter; `...` ends the YAML document.  Only at
     // column 0 (spec §4.2), and by then every block has been closed.
-    if (line_start && column == 0 && (c == '-' || c == '.')) {
+    if (at_line_start && at_column_0 && (c == '-' || c == '.')) {
         size_t run = 0;
         while (run < 3 && lexer->lookahead == c) {
             fm_advance(lexer);
@@ -3338,7 +3437,8 @@ static bool fm_token(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
             lexer->mark_end(lexer);
             return fm_emit(s, lexer, FM_COMMENT, FM_MID_LINE);
         case '%':
-            if (line_start) {
+            // a directive is a column-0 line (as `fm_peek_next_line` has it)
+            if (at_line_start && at_column_0) {
                 while (!fm_at_eol(lexer)) fm_advance(lexer);
                 lexer->mark_end(lexer);
                 return fm_emit(s, lexer, FM_DIRECTIVE, FM_MID_LINE);
@@ -3347,9 +3447,9 @@ static bool fm_token(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
         case '-':
             fm_advance(lexer);
             if (is_blank(lexer->lookahead) || fm_at_eol(lexer)) {
-                if (valid_symbols[FM_DASH]) {
+                if (valid_symbols[FM_DASH] &&
+                    (line_start || fm_push(s, (int16_t)column, FM_LEVEL_BLOCK))) {
                     lexer->mark_end(lexer);
-                    if (!line_start) fm_push(s, (int16_t)column, FM_LEVEL_BLOCK);
                     return fm_emit(s, lexer, FM_DASH, FM_MID_LINE);
                 }
                 if (valid_symbols[FM_UNSUPPORTED]) return fm_unsupported_to_eol(s, lexer);
@@ -3382,11 +3482,14 @@ static bool fm_token(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
             return fm_plain(s, lexer, valid_symbols, line_start, column, true);
         }
         case '&':
-            return fm_property(s, lexer, valid_symbols, FM_ANCHOR, in_flow);
+            return fm_property(s, lexer, valid_symbols, FM_ANCHOR, in_flow, (int16_t)column,
+                               line_start);
         case '!':
-            return fm_property(s, lexer, valid_symbols, FM_TAG, in_flow);
+            return fm_property(s, lexer, valid_symbols, FM_TAG, in_flow, (int16_t)column,
+                               line_start);
         case '*':
-            return fm_property(s, lexer, valid_symbols, FM_ALIAS, in_flow);
+            return fm_property(s, lexer, valid_symbols, FM_ALIAS, in_flow, (int16_t)column,
+                               line_start);
         case '|':
         case '>':
             if (in_flow) break;
@@ -3502,23 +3605,25 @@ static bool fm_line_break(Scanner *s, TSLexer *lexer, const bool *valid_symbols)
     }
     if (!closes_all) {
         if (indent > top->indent) {
-            if (valid_symbols[FM_INDENT]) {
-                fm_push(s, indent, FM_LEVEL_BLOCK);
+            if (valid_symbols[FM_INDENT] && fm_push(s, indent, FM_LEVEL_BLOCK)) {
                 return fm_emit(s, lexer, FM_INDENT, FM_BREAK_PENDING);
             }
             if (valid_symbols[FM_NEWLINE]) {
                 // Over-indented, but nothing here can own a nested block
-                // (`a: b` then `  c: d`): not a sibling, so the line is
-                // opaque rather than mis-nested (P4).
+                // (`a: b` then `  c: d`), or nesting is at FM_MAX_DEPTH: not
+                // a sibling, so the line is opaque rather than mis-nested (P4).
                 s->fm_force_unsupported = true;
                 return fm_emit(s, lexer, FM_NEWLINE, FM_BREAK_PENDING);
             }
         } else {
-            if (next == FM_NEXT_DASH && valid_symbols[FM_SEQUENCE_NEWLINE]) {
-                fm_push(s, indent, FM_LEVEL_ZERO_SEQ);
+            if (next == FM_NEXT_DASH && valid_symbols[FM_SEQUENCE_NEWLINE] &&
+                fm_push(s, indent, FM_LEVEL_ZERO_SEQ)) {
                 return fm_emit(s, lexer, FM_SEQUENCE_NEWLINE, FM_BREAK_PENDING);
             }
             if (valid_symbols[FM_NEWLINE]) {
+                // Shallower than a block it cannot close (the root, when the
+                // first line was indented): not a sibling either.
+                if (indent < top->indent) s->fm_force_unsupported = true;
                 return fm_emit(s, lexer, FM_NEWLINE, FM_BREAK_PENDING);
             }
         }
@@ -3555,11 +3660,13 @@ static bool fm_scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
         if (s->fm_line == FM_BREAK_PENDING) {
             // the line ending, blank lines and the indentation of the next
             // line whose structure was already decided
-            while (is_newline(lexer->lookahead) || is_blank(lexer->lookahead)) {
+            while (is_newline(lexer->lookahead)) {
                 fm_advance(lexer);
+                fm_skip_indentation(s, lexer);
             }
             lexer->mark_end(lexer);
-            bool more_pending = lexer->lookahead == '#' || lexer->lookahead == '%' ||
+            bool more_pending = lexer->lookahead == '#' ||
+                                (lexer->lookahead == '%' && s->fm_line_chars == 0) ||
                                 lexer->eof(lexer);
             return fm_emit(s, lexer, FM_SPACE,
                            more_pending ? FM_BREAK_PENDING : FM_LINE_START);
@@ -3568,8 +3675,9 @@ static bool fm_scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
                           valid_symbols[FM_DEDENT] || valid_symbols[FM_SEQUENCE_NEWLINE];
         if (!structural && valid_symbols[FM_FLOW_PLAIN]) {
             // Inside a flow collection line breaks are whitespace.
-            while (is_newline(lexer->lookahead) || is_blank(lexer->lookahead)) {
+            while (is_newline(lexer->lookahead)) {
                 fm_advance(lexer);
+                fm_skip_indentation(s, lexer);
             }
             lexer->mark_end(lexer);
             return fm_emit(s, lexer, FM_SPACE, FM_MID_LINE);
@@ -3579,8 +3687,9 @@ static bool fm_scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
 
     if (s->fm_line == FM_BREAK_PENDING) {
         // A comment or directive line before the line the structure was
-        // decided for.
-        if (c == '#' || c == '%') {
+        // decided for.  (A directive only at column 0, as in
+        // `fm_peek_next_line`: an indented `%` is the decided line itself.)
+        if (c == '#' || (c == '%' && lexer->get_column(lexer) == 0)) {
             while (!fm_at_eol(lexer)) fm_advance(lexer);
             lexer->mark_end(lexer);
             return fm_emit(s, lexer, c == '#' ? FM_COMMENT : FM_DIRECTIVE,
@@ -3595,7 +3704,13 @@ static bool fm_scan(Scanner *s, TSLexer *lexer, const bool *valid_symbols) {
     }
 
     if (is_blank(c)) {
-        while (is_blank(lexer->lookahead)) fm_advance(lexer);
+        if (s->fm_line != FM_MID_LINE) {
+            // the first line's indentation (later lines' is consumed with
+            // their line break)
+            fm_skip_indentation(s, lexer);
+        } else {
+            while (is_blank(lexer->lookahead)) fm_advance(lexer);
+        }
         lexer->mark_end(lexer);
         lexer->result_symbol = FM_SPACE;
         return true; // whitespace keeps the line position
@@ -3658,9 +3773,12 @@ bool tree_sitter_okf_external_scanner_scan(void *payload, TSLexer *lexer,
                          symbol == EMPHASIS_OPEN_UNDERSCORE ||
                          symbol == EMPHASIS_CLOSE_UNDERSCORE ||
                          symbol == STRIKETHROUGH_OPEN || symbol == STRIKETHROUGH_CLOSE;
-        if (!delimiter) {
+        // (a literal run's delimiters are punctuation tokens that continue it)
+        bool literal_run = (scanner->inline_state & STATE_LITERAL_RUN) &&
+                           symbol >= PUNCTUATION_FIRST && symbol <= PUNCTUATION_LAST;
+        if (!delimiter && !literal_run) {
             scanner->num_emphasis_delimiters_left = 0;
-            scanner->inline_state &= ~STATE_EMPHASIS_DELIMITER_IS_OPEN;
+            scanner->inline_state &= ~(STATE_EMPHASIS_DELIMITER_IS_OPEN | STATE_LITERAL_RUN);
         }
         bool inline_token = delimiter || symbol == CODE_SPAN_START || symbol == CODE_SPAN_CLOSE ||
                             symbol == UNCLOSED_SPAN || symbol == FOOTNOTE_REFERENCE_START ||

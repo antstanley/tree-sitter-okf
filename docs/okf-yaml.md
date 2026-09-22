@@ -74,7 +74,10 @@ still parse normally.
 | A line starting with `:` | `: v` | The line |
 | A line deeper than its block that nothing can own | `a: b⏎  c: d` | The over-indented line |
 | A line shallower than its block but deeper than the parent | `a:⏎  - b⏎ c: d` | The line |
+| A line shallower than the root, when the first line was indented | `  a: 1⏎b: 2` | The line |
 | A sibling of a different kind | `- a⏎b: c` (a mapping pair after a root sequence) | The line |
+| An indented `%` line (a directive is only at column 0) | `a:⏎  %x` | The pair's `value` |
+| Nesting deeper than 48 levels | — | Each line past the limit |
 | Anything else YAML 1.2 allows that §2 does not list | — | — |
 
 A `yaml_unsupported` node is **grep-able**: CI or a linter can report
@@ -86,7 +89,11 @@ producer finds out without the parse failing.
 * Indentation is counted in columns, and spaces count 1.
 * **Tabs** advance to the next multiple of **8** (spec Q6). YAML forbids tab
   indentation. OKF-YAML accepts it with this fixed width so an editor never
-  sees a broken tree, and a linter can flag the tab.
+  sees a broken tree, and a linter can flag the tab. Columns later on a line
+  (such as the key in `⇥- key: v`) are measured the same way, so a sibling
+  line indented with the same tabs lines up.
+* A node after anchors or tags (`&a key: v`) stands at the column of the
+  first property, for indentation purposes.
 * The first content line fixes the root indentation, which does not have to
   be column 0.
 * Blank lines, comment lines and directive lines never affect structure.

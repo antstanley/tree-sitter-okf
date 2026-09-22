@@ -60,7 +60,7 @@ step "vendored sources and fixtures match their locks"
 
 step "bindings are current"
 "$PYTHON" setup.py -q build_ext --inplace >/dev/null 2>&1
-npx --yes node-gyp rebuild >/dev/null 2>&1
+npx --yes node-gyp@13.0.2 rebuild >/dev/null 2>&1
 
 step "fixture bundles parse without ERROR"
 failed=0
@@ -84,6 +84,9 @@ step "host helpers: Node reference, Node tests, Python port"
 node script/helpers-fixtures.js
 node --test bindings/node/*_test.js
 "$PYTHON" -m unittest discover -s bindings/python/tests
+
+step "pathological inputs (script/pathological)"
+"$PYTHON" script/pathological
 
 step "property suite (script/property-test)"
 "$PYTHON" script/property-test --seed 1

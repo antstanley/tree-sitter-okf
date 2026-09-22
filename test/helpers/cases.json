@@ -737,6 +737,200 @@
     "legacyCitations": null,
     "conformance": []
    }
+  },
+  {
+   "name": "escapes that name no code point stay as written",
+   "path": "x.md",
+   "source": "---\ntype: T\npath: \"C:\\Users\\me\"\nbig: \"\\U00110000\"\nok: \"\\x41\\u00e9\"\nend: \"a\\\\\n  b\"\n---\n",
+   "expect": {
+    "classify": "concept",
+    "conceptId": "x",
+    "frontmatter": {
+     "present": true,
+     "closed": true,
+     "value": {
+      "type": "T",
+      "path": "C:\\Users\\me",
+      "big": "\\U00110000",
+      "ok": "Aé",
+      "end": "a\\ b"
+     },
+     "unsupported": false
+    },
+    "trustTier": "unverified",
+    "status": "stable",
+    "isStale": null,
+    "generatedAt": null,
+    "duplicateKeys": [],
+    "citations": {
+     "references": [],
+     "definitions": [],
+     "unresolved": [],
+     "unused": []
+    },
+    "legacyCitations": null,
+    "conformance": []
+   }
+  },
+  {
+   "name": "CRLF line endings never reach values",
+   "path": "x.md",
+   "source": "---\r\ntype: T\r\nx: first\r\n  second\r\nb: |\r\n  l1\r\n  l2\r\n---\r\n",
+   "expect": {
+    "classify": "concept",
+    "conceptId": "x",
+    "frontmatter": {
+     "present": true,
+     "closed": true,
+     "value": {
+      "type": "T",
+      "x": "first second",
+      "b": "l1\nl2\n"
+     },
+     "unsupported": false
+    },
+    "trustTier": "unverified",
+    "status": "stable",
+    "isStale": null,
+    "generatedAt": null,
+    "duplicateKeys": [],
+    "citations": {
+     "references": [],
+     "definitions": [],
+     "unresolved": [],
+     "unused": []
+    },
+    "legacyCitations": null,
+    "conformance": []
+   }
+  },
+  {
+   "name": "prototype-named keys are ordinary keys",
+   "path": "x.md",
+   "source": "---\ntype: T\n__proto__: x\nconstructor: y\n---\n",
+   "expect": {
+    "classify": "concept",
+    "conceptId": "x",
+    "frontmatter": {
+     "present": true,
+     "closed": true,
+     "value": {
+      "type": "T",
+      "__proto__": "x",
+      "constructor": "y"
+     },
+     "unsupported": false
+    },
+    "trustTier": "unverified",
+    "status": "stable",
+    "isStale": null,
+    "generatedAt": null,
+    "duplicateKeys": [],
+    "citations": {
+     "references": [],
+     "definitions": [],
+     "unresolved": [],
+     "unused": []
+    },
+    "legacyCitations": null,
+    "conformance": []
+   }
+  },
+  {
+   "name": "stale_after without an offset is UTC",
+   "path": "x.md",
+   "now": "2026-09-23T12:00:00Z",
+   "source": "---\ntype: T\nstale_after: 2026-09-23T10:00:00\n---\n",
+   "expect": {
+    "classify": "concept",
+    "conceptId": "x",
+    "frontmatter": {
+     "present": true,
+     "closed": true,
+     "value": {
+      "type": "T",
+      "stale_after": "2026-09-23T10:00:00"
+     },
+     "unsupported": false
+    },
+    "trustTier": "unverified",
+    "status": "stable",
+    "isStale": true,
+    "generatedAt": null,
+    "duplicateKeys": [],
+    "citations": {
+     "references": [],
+     "definitions": [],
+     "unresolved": [],
+     "unused": []
+    },
+    "legacyCitations": null,
+    "conformance": []
+   }
+  },
+  {
+   "name": "stale_after that is not ISO 8601 is ignored",
+   "path": "x.md",
+   "now": "2026-09-23T12:00:00Z",
+   "source": "---\ntype: T\nstale_after: September 1 2026\n---\n",
+   "expect": {
+    "classify": "concept",
+    "conceptId": "x",
+    "frontmatter": {
+     "present": true,
+     "closed": true,
+     "value": {
+      "type": "T",
+      "stale_after": "September 1 2026"
+     },
+     "unsupported": false
+    },
+    "trustTier": "unverified",
+    "status": "stable",
+    "isStale": null,
+    "generatedAt": null,
+    "duplicateKeys": [],
+    "citations": {
+     "references": [],
+     "definitions": [],
+     "unresolved": [],
+     "unused": []
+    },
+    "legacyCitations": null,
+    "conformance": []
+   }
+  },
+  {
+   "name": "stale_after with an impossible date is ignored",
+   "path": "x.md",
+   "now": "2026-09-23T12:00:00Z",
+   "source": "---\ntype: T\nstale_after: 2026-02-30\n---\n",
+   "expect": {
+    "classify": "concept",
+    "conceptId": "x",
+    "frontmatter": {
+     "present": true,
+     "closed": true,
+     "value": {
+      "type": "T",
+      "stale_after": "2026-02-30"
+     },
+     "unsupported": false
+    },
+    "trustTier": "unverified",
+    "status": "stable",
+    "isStale": null,
+    "generatedAt": null,
+    "duplicateKeys": [],
+    "citations": {
+     "references": [],
+     "definitions": [],
+     "unresolved": [],
+     "unused": []
+    },
+    "legacyCitations": null,
+    "conformance": []
+   }
   }
  ]
 }

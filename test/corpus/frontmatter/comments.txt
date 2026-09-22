@@ -130,3 +130,28 @@ quoted: 'a # b'
         key: (plain_scalar)
         value: (single_quote_scalar))))
   body: (body))
+
+================================================================================
+An indented % line is content, not a directive
+================================================================================
+---
+a:
+  %x
+b: 1
+---
+body
+
+--------------------------------------------------------------------------------
+
+(source_file
+  frontmatter: (frontmatter
+    (block_mapping
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (yaml_unsupported))
+      (block_mapping_pair
+        key: (plain_scalar)
+        value: (plain_scalar))))
+  body: (body
+    (paragraph
+      (inline))))

@@ -133,8 +133,10 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
       - name: Upgrade npm for trusted publishing and `npm stage`
-        # trusted publishing needs npm >= 11.5.1; `npm stage` is newer still
-        run: npm install -g npm@latest
+        # trusted publishing needs npm >= 11.5.1; `npm stage` is newer still.
+        # Pinned: this job can mint publishing credentials, so it installs
+        # nothing whose content can change under it.
+        run: npm install -g npm@11.17.0
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: npm
@@ -155,8 +157,24 @@ jobs:
           # --ignore-scripts: the tarball is uploaded, not installed. The
           # "(staged with id ...)" line is teed for the summary below; 2>&1
           # because npm prints notices on stderr.
+          set +e
           npm stage publish --provenance --access public --ignore-scripts \
             "dist/tree-sitter-okf-${VERSION}.tgz" 2>&1 | tee -a "${RUNNER_TEMP}/staged.log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            # A re-run while this version is staged but not yet approved: the
+            # registry refuses a second upload of the same version. `npm stage
+            # list` cannot confirm it (it needs an account token), so match
+            # the refusal; anything else is a real failure.
+            if grep -qiE 'E409|already (staged|exists)|cannot publish over|previously published' \
+                "${RUNNER_TEMP}/staged.log"; then
+              echo "::notice::tree-sitter-okf@${VERSION} is already staged; approve the pending upload"
+              echo "already staged" >> "${RUNNER_TEMP}/staged.log"
+              exit 0
+            fi
+            exit "$status"
+          fi
       # The staging id comes from the publish output: `npm stage list` would
       # need an account token, which this workflow deliberately does not have.
       - name: Summarize (approve to go live)
@@ -169,6 +187,9 @@ jobs:
               grep 'staged with id' "${RUNNER_TEMP}/staged.log" | sed 's/^+ /- /'
               echo
               echo 'Not live yet. Approve with `npm stage approve <id>` or the npmjs staged-packages UI.'
+            elif grep -q '^already staged$' "${RUNNER_TEMP}/staged.log"; then
+              echo 'This version was staged by an earlier run and awaits approval'
+              echo '(`npm stage list tree-sitter-okf`, then `npm stage approve <id>`).'
             else
               echo 'Nothing staged: this version is already published.'
             fi
