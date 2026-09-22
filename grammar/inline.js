@@ -41,6 +41,15 @@ const PUNCTUATION_CHARACTERS_REGEX = common.PUNCTUATION_CHARACTERS_REGEX;
 const DIALECT_WIKILINK = !!process.env.OKF_DIALECT_WIKILINK;
 const DIALECT_TAGS = !!process.env.OKF_DIALECT_TAGS;
 
+/**
+ * The punctuation the scanner may emit itself (delta I2).  `[` is left out:
+ * an opening bracket drives most of the GLR forking in the inline layer, and
+ * one that can open nothing is `_literal_open_bracket` (delta I3), which
+ * records itself.
+ */
+const RECORDED_PUNCTUATION = common.PUNCTUATION_CHARACTERS_ARRAY
+  .filter((c) => !['['].includes(c));
+
 /** External tokens owned by the inline half of `src/scanner.c`. */
 const externals = ($) => [
   // Opening and closing delimiters for code spans.  An opening token does not
@@ -72,6 +81,27 @@ const externals = ($) => [
   // `[^label]` follows, so a stray `[^` stays literal text.
   $._footnote_reference_start,
   $.footnote_label,
+  $._footnote_reference_end, // its `]`: emitted by the scanner so that
+                             // emphasis right after it is decided the same way
+                             // on every parse (delta I2)
+
+  // OKF delta I3: a `[` with no `]` anywhere after it in its paragraph can
+  // open no link or image.  The scanner says so with this zero-width token
+  // just before it, and the parser then does not fork on it (upstream forks
+  // on every `[`, which can exhaust tree-sitter's parse versions on text such
+  // as `![*c![`).  Hidden, so trees are unchanged.
+  $._literal_open_bracket,
+
+  // OKF delta I2: inline whitespace and punctuation are ordinary tokens, but
+  // the scanner emits them itself when an emphasis delimiter run follows, so
+  // the kind of character before the run is recorded in scanner state.
+  // Upstream reads it from the validity of `_last_token_whitespace` /
+  // `_last_token_punctuation` alone, which an incremental re-parse loses when
+  // it reuses the subtree ending just before the run.  Order matters: see
+  // src/scanner.c.
+  $._whitespace_ge_2,
+  $._whitespace_1,
+  ...RECORDED_PUNCTUATION,
 ];
 
 const rules = {
@@ -87,7 +117,7 @@ const rules = {
   // parser decide while parsing which branch is the most important.
   code_span: ($) => seq(
     alias($._code_span_start, $.code_span_delimiter),
-    repeat(choice($._text_base, '[', ']', $._soft_line_break, $._html_tag)),
+    repeat(choice($._text_base, '[', ']', seq($._literal_open_bracket, '['), $._soft_line_break, $._html_tag)),
     alias($._code_span_close, $.code_span_delimiter),
   ),
 
@@ -133,7 +163,7 @@ const rules = {
     '[',
     '^',
     field('label', $.footnote_label),
-    ']',
+    alias($._footnote_reference_end, ']'),
     optional($._last_token_punctuation),
   ),
 
@@ -270,7 +300,8 @@ const rules = {
   // Whitespace is divided into single whitespaces and multiple whitespaces as
   // hard line breaks need that distinction.
   _whitespace_ge_2: (_) => /\t| [ \t]+/,
-  _whitespace: ($) => seq(choice($._whitespace_ge_2, / /), optional($._last_token_whitespace)),
+  _whitespace_1: (_) => / /,
+  _whitespace: ($) => seq(choice($._whitespace_ge_2, $._whitespace_1), optional($._last_token_whitespace)),
 
   // Other than whitespace, text is tokenized into strings of digits,
   // punctuation characters (see `common.punctuation_without`) and strings of
@@ -420,7 +451,7 @@ function addInlineRules(target) {
             $.full_reference_link,
             $.collapsed_reference_link,
             $.inline_link,
-            seq(choice('[', ']'), optional($._last_token_punctuation)),
+            seq(choice('[', ']', seq($._literal_open_bracket, '[')), optional($._last_token_punctuation)),
           ]);
           if (DIALECT_WIKILINK) elements.push($.wiki_link);
         }
@@ -460,6 +491,7 @@ const conflicts = ($) => [
 ];
 
 module.exports = {
+  RECORDED_PUNCTUATION,
   externals,
   rules,
   precedences,

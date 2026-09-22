@@ -1,0 +1,8 @@
+31:0-57:0  @local.scope  '# Computation...'
+31:2-31:13  @local.definition  'Computation'
+50:87-50:101  @local.reference  'revenue-policy'
+57:0-66:0  @local.scope  '# What the attester checks...'
+57:2-57:26  @local.definition  'What the attester checks'
+66:0-71:0  @local.scope  '# Freshness...'
+66:2-66:11  @local.definition  'Freshness'
+70:2-70:16  @local.definition  'revenue-policy'

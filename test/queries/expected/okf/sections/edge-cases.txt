@@ -1,0 +1,6 @@
+33:0-39:0  @okf.section.schema  '# Schema...'
+33:2-33:8  @okf.section.heading  'Schema'
+39:0-50:0  @okf.section.computation  '# computation...'
+39:2-39:13  @okf.section.heading  'computation'
+44:0-50:0  @okf.log.entry  '## 2026-07-01...'
+44:3-44:13  @okf.log.date  '2026-07-01'

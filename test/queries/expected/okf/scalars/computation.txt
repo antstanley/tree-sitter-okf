@@ -1,0 +1,6 @@
+7:43-7:47  @okf.scalar.boolean  'true'
+13:53-13:73  @okf.scalar.timestamp  '2026-06-30T14:00:00Z'
+15:33-15:53  @okf.scalar.timestamp  '2026-07-01T09:00:00Z'
+17:13-17:33  @okf.scalar.timestamp  '2026-12-31T00:00:00Z'
+23:19-23:39  @okf.scalar.timestamp  '2026-06-15T00:00:00Z'
+28:19-28:39  @okf.scalar.timestamp  '2026-07-01T00:00:00Z'

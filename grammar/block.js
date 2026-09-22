@@ -253,7 +253,7 @@ const rules = {
       alias($._fenced_code_block_start_backtick, $.fenced_code_block_delimiter),
       optional($._blk_whitespace),
       optional($.info_string),
-      $._newline,
+      choice($._newline, $._eof),
       optional($.code_fence_content),
       optional(seq(alias($._fenced_code_block_end_backtick, $.fenced_code_block_delimiter), $._close_block, $._newline)),
       $._block_close,
@@ -262,7 +262,7 @@ const rules = {
       alias($._fenced_code_block_start_tilde, $.fenced_code_block_delimiter),
       optional($._blk_whitespace),
       optional($.info_string),
-      $._newline,
+      choice($._newline, $._eof),
       optional($.code_fence_content),
       optional(seq(alias($._fenced_code_block_end_tilde, $.fenced_code_block_delimiter), $._close_block, $._newline)),
       $._block_close,
@@ -271,6 +271,8 @@ const rules = {
   code_fence_content: ($) => repeat1(choice($._newline, $._blk_line)),
   info_string: ($) => choice(
     seq($.language, repeat(choice($._blk_line, $.backslash_escape, $.entity_reference, $.numeric_character_reference))),
+    // OKF: an info string may start with a `,`, which no language contains
+    seq(',', repeat(choice($._blk_line, $.backslash_escape, $.entity_reference, $.numeric_character_reference))),
     seq(
       repeat1(choice('{', '}')),
       optional(choice(
@@ -467,22 +469,21 @@ const rules = {
     optional($.block_continuation),
   ),
 
+  // OKF: any row the scanner accepts as a delimiter row parses, including one
+  // with a leading pipe and no trailing one (`|---`).
   pipe_table_delimiter_row: ($) => seq(
     optional(seq(
       optional($._blk_whitespace),
       $._pipe,
     )),
-    repeat1(prec.right(seq(
-      optional($._blk_whitespace),
-      $.pipe_table_delimiter_cell,
-      optional($._blk_whitespace),
-      $._pipe,
-    ))),
+    $._delimiter_cell,
+    repeat(seq($._pipe, $._delimiter_cell)),
+    optional(seq($._pipe, optional($._blk_whitespace))),
+  ),
+  _delimiter_cell: ($) => seq(
     optional($._blk_whitespace),
-    optional(seq(
-      $.pipe_table_delimiter_cell,
-      optional($._blk_whitespace),
-    )),
+    $.pipe_table_delimiter_cell,
+    optional($._blk_whitespace),
   ),
 
   pipe_table_delimiter_cell: ($) => seq(

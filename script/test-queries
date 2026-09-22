@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+"""Query fixtures: run every query file over every input, compare captures.
+
+For each queries/**/*.scm file and each test/queries/inputs/*.md document,
+the captures (name, range, text) are compared against
+test/queries/expected/<query>/<input>.txt.  `--update` rewrites the expected
+files; review them with `git diff` before committing (spec §9.1, M3).
+
+Also checks, for the opt-in full-YAML preset (spec D2, §9.4(3)), that the
+frontmatter content it injects is a YAML document tree-sitter-yaml parses
+without error, when tree-sitter-yaml is installed.
+
+Usage: script/test-queries [--update] [-v]
+"""
+
+import argparse
+import os
+import sys
+
+import tree_sitter
+import tree_sitter_okf
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+QUERIES = os.path.join(ROOT, "queries")
+INPUTS = os.path.join(ROOT, "test", "queries", "inputs")
+EXPECTED = os.path.join(ROOT, "test", "queries", "expected")
+
+
+def query_files():
+    for dirpath, _, names in os.walk(QUERIES):
+        for name in sorted(names):
+            if name.endswith(".scm"):
+                yield os.path.relpath(os.path.join(dirpath, name), QUERIES)
+
+
+def render_captures(language, query_source, source):
+    parser = tree_sitter.Parser(language)
+    tree = parser.parse(source)
+    query = tree_sitter.Query(language, query_source)
+    cursor = tree_sitter.QueryCursor(query)
+    rows = []
+    for _, captures in cursor.matches(tree.root_node):
+        for name, nodes in captures.items():
+            if name.startswith("_"):
+                continue
+            for node in nodes:
+                text = source[node.start_byte:node.end_byte].decode("utf-8", "replace")
+                if len(text) > 60 or "\n" in text:
+                    first = text.split("\n", 1)[0][:57]
+                    text = first + "..."
+                rows.append((node.start_point, node.end_point, name, text))
+    rows = sorted(set(rows))
+    return "".join(
+        f"{s[0]}:{s[1]}-{e[0]}:{e[1]}  @{name}  {text!r}\n" for s, e, name, text in rows
+    )
+
+
+def check_fullyaml(language, verbose):
+    try:
+        import tree_sitter_yaml
+    except ImportError:
+        print("  (tree-sitter-yaml not installed: skipping the full-YAML preset check)")
+        return True
+    yaml = tree_sitter.Language(tree_sitter_yaml.language())
+    query_source = open(os.path.join(QUERIES, "injections-fullyaml.scm"), encoding="utf-8").read()
+    query = tree_sitter.Query(language, query_source)
+    parser = tree_sitter.Parser(language)
+    yaml_parser = tree_sitter.Parser(yaml)
+    ok = True
+    paths = [os.path.join(INPUTS, n) for n in sorted(os.listdir(INPUTS)) if n.endswith(".md")]
+    fixtures = os.path.join(ROOT, "test", "fixtures", "bundles")
+    for dirpath, _, names in os.walk(fixtures):
+        paths += [os.path.join(dirpath, n) for n in sorted(names) if n.endswith(".md") and n != "LICENSE.md"]
+    for path in paths:
+        source = open(path, "rb").read()
+        tree = parser.parse(source)
+        ranges = []
+        for _, captures in tree_sitter.QueryCursor(query).matches(tree.root_node):
+            for node in captures.get("injection.content", []):
+                if node.parent is not None and node.parent.type == "frontmatter":
+                    ranges.append(node.range)
+        if not ranges:
+            continue
+        yaml_parser.included_ranges = sorted(set(ranges), key=lambda r: r.start_byte)
+        yaml_tree = yaml_parser.parse(source)
+        if yaml_tree.root_node.has_error:
+            ok = False
+            print(f"  FULLYAML ERROR  {os.path.relpath(path, ROOT)}")
+            if verbose:
+                print(str(yaml_tree.root_node))
+    return ok
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--update", action="store_true", help="rewrite expected captures")
+    ap.add_argument("-v", "--verbose", action="store_true")
+    args = ap.parse_args()
+
+    language = tree_sitter.Language(tree_sitter_okf.language())
+    inputs = sorted(n for n in os.listdir(INPUTS) if n.endswith(".md"))
+    failures = 0
+    checked = 0
+    for qfile in query_files():
+        query_source = open(os.path.join(QUERIES, qfile), encoding="utf-8").read()
+        for name in inputs:
+            source = open(os.path.join(INPUTS, name), "rb").read()
+            actual = render_captures(language, query_source, source)
+            expected_path = os.path.join(EXPECTED, qfile[:-4], name[:-3] + ".txt")
+            checked += 1
+            if args.update:
+                os.makedirs(os.path.dirname(expected_path), exist_ok=True)
+                with open(expected_path, "w", encoding="utf-8") as f:
+                    f.write(actual)
+                continue
+            expected = open(expected_path, encoding="utf-8").read() if os.path.exists(expected_path) else None
+            if actual != expected:
+                failures += 1
+                print(f"  DIFF  {qfile} on {name}")
+                if args.verbose:
+                    import difflib
+                    sys.stdout.writelines(difflib.unified_diff(
+                        (expected or "").splitlines(True), actual.splitlines(True),
+                        "expected", "actual"))
+    print(f"{checked} query fixtures, {failures} differing" + (" (updated)" if args.update else ""))
+    ok = check_fullyaml(language, args.verbose)
+    return 1 if failures or not ok else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

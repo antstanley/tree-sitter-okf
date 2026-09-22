@@ -1,0 +1,302 @@
+#!/usr/bin/env python3
+"""Property tests (spec §9.3).
+
+Over every fixture document, every test/corpus input and a seeded fuzz corpus
+of mutations of them:
+
+  zero-error     no ERROR node anywhere; a MISSING node only as the closing
+                 `---` of unterminated frontmatter (spec §8)
+  coverage       the root spans the whole input, and `frontmatter` and `body`
+                 are contiguous (spec P1)
+  determinism    parsing twice yields the same tree
+  isolation      re-parsing with the old tree and no edit yields the same tree
+                 (guards against state leaking between the two scanners)
+  incremental    after random edits, the incremental parse equals a fresh
+                 parse, ranges included
+  line-endings   CRLF input has the same tree shape as LF input
+  bom            a leading BOM changes no node types
+  linear         parse time for a 2x input stays under a documented bound
+
+Usage: script/property-test [--seed N] [--mutations N] [--edits N] [-v]
+"""
+
+import argparse
+import os
+import random
+import re
+import sys
+import time
+
+import tree_sitter
+import tree_sitter_okf
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# 2x input must parse in at most this multiple of the 1x time (plus slack for
+# timer noise).  Linear is 2.0; the bound leaves room for cache effects.
+LINEAR_BOUND = 3.0
+
+# Characters that are significant to one of the scanners.  The fuzzer favours
+# them, since that is where state machines break.
+SIGNIFICANT = list("-:#>*_`~[]^|{}(),'\"!&\\\n\t ") + ["---\n", "  ", "\n\n", "- ", "[^", "```"]
+
+
+def inputs():
+    fixtures = os.path.join(ROOT, "test", "fixtures", "bundles")
+    for dirpath, _, names in os.walk(fixtures):
+        for name in sorted(names):
+            if name.endswith(".md") and name != "LICENSE.md":
+                path = os.path.join(dirpath, name)
+                yield os.path.relpath(path, ROOT), open(path, "rb").read()
+    header = re.compile(r"^(={3,})\n(.*?)\n\1\n", re.M | re.S)
+    corpus = os.path.join(ROOT, "test", "corpus")
+    for dirpath, _, names in os.walk(corpus):
+        for name in sorted(names):
+            text = open(os.path.join(dirpath, name), encoding="utf-8").read()
+            hs = list(header.finditer(text))
+            for i, m in enumerate(hs):
+                end = hs[i + 1].start() if i + 1 < len(hs) else len(text)
+                body = text[m.end():end]
+                dashes = list(re.finditer(r"^-{3,}\n", body, re.M))
+                if not dashes:
+                    continue
+                source = body[: dashes[-1].start()]
+                if source.endswith("\n"):
+                    source = source[:-1]
+                yield f"corpus:{m.group(2).splitlines()[0]}", source.encode("utf-8")
+    queries = os.path.join(ROOT, "test", "queries", "inputs")
+    for name in sorted(os.listdir(queries)):
+        yield f"queries:{name}", open(os.path.join(queries, name), "rb").read()
+
+
+def sexp(node):
+    """Structural fingerprint: named nodes, fields and byte ranges."""
+    out = []
+
+    def walk(n, field):
+        out.append(f"({field + ':' if field else ''}{n.type}{'!' if n.is_missing else ''}"
+                   f"[{n.start_byte},{n.end_byte}]")
+        cursor = n.walk()
+        if cursor.goto_first_child():
+            while True:
+                c = cursor.node
+                if c.is_named or c.is_missing:
+                    walk(c, cursor.field_name)
+                if not cursor.goto_next_sibling():
+                    break
+        out.append(")")
+
+    walk(node, None)
+    return "".join(out)
+
+
+def shape(node):
+    """Node types only, without ranges."""
+    return re.sub(r"\[\d+,\d+\]", "", sexp(node))
+
+
+def error_problems(tree):
+    problems = []
+    stack = [tree.root_node]
+    while stack:
+        n = stack.pop()
+        if n.type == "ERROR" or n.is_error:
+            problems.append(f"ERROR at {n.start_point}")
+        elif n.is_missing:
+            if not (n.parent is not None and n.parent.type == "frontmatter" and n.type == "---"):
+                problems.append(f"MISSING {n.type} at {n.start_point}")
+        if n.has_error:
+            stack.extend(n.children)
+    return problems
+
+
+def coverage_problems(tree, source):
+    root = tree.root_node
+    start = 3 if source.startswith(b"\xef\xbb\xbf") else 0
+    problems = []
+    if root.start_byte != start and len(source) > start:
+        problems.append(f"root starts at {root.start_byte}, not {start}")
+    if root.end_byte != len(source):
+        problems.append(f"root ends at {root.end_byte}, not {len(source)}")
+    fm = root.child_by_field_name("frontmatter")
+    body = root.child_by_field_name("body")
+    if fm is not None and body is not None and fm.end_byte != body.start_byte:
+        problems.append(f"gap between frontmatter ({fm.end_byte}) and body ({body.start_byte})")
+    return problems
+
+
+def mutate(rng, source):
+    text = source.decode("utf-8", "replace")
+    for _ in range(rng.randint(1, 4)):
+        if not text:
+            text = rng.choice(SIGNIFICANT)
+            continue
+        i = rng.randrange(len(text) + 1)
+        op = rng.random()
+        if op < 0.35:
+            text = text[:i] + rng.choice(SIGNIFICANT) + text[i:]
+        elif op < 0.6:
+            j = min(len(text), i + rng.randint(1, 8))
+            text = text[:i] + text[j:]
+        elif op < 0.8:
+            lines = text.split("\n")
+            k = rng.randrange(len(lines))
+            lines.insert(k, lines[rng.randrange(len(lines))])
+            text = "\n".join(lines)
+        else:
+            lines = text.split("\n")
+            k = rng.randrange(len(lines))
+            lines[k] = " " * rng.choice([1, 2, 4]) + lines[k]
+            text = "\n".join(lines)
+    return text.encode("utf-8")
+
+
+def point_at(source, byte):
+    before = source[:byte]
+    row = before.count(b"\n")
+    col = byte - (before.rfind(b"\n") + 1)
+    return (row, col)
+
+
+def random_edit(rng, source):
+    """A random replacement: (start, old_end, new_text)."""
+    if not source:
+        return 0, 0, rng.choice(SIGNIFICANT).encode()
+    start = rng.randrange(len(source) + 1)
+    # keep edits on character boundaries
+    while start < len(source) and (source[start] & 0xC0) == 0x80:
+        start += 1
+    old_end = min(len(source), start + rng.choice([0, 0, 1, 2, 5, 20]))
+    while old_end < len(source) and (source[old_end] & 0xC0) == 0x80:
+        old_end += 1
+    new = rng.choice(SIGNIFICANT + ["", "word ", "key: value\n", "| a |\n"])
+    return start, old_end, new.encode()
+
+
+def incremental_problems(parser, rng, source, edits):
+    tree = parser.parse(source)
+    current = source
+    chain = []
+    for _ in range(edits):
+        start, old_end, new = random_edit(rng, current)
+        chain.append((start, old_end, new))
+        updated = current[:start] + new + current[old_end:]
+        new_end = start + len(new)
+        tree.edit(
+            start_byte=start,
+            old_end_byte=old_end,
+            new_end_byte=new_end,
+            start_point=point_at(current, start),
+            old_end_point=point_at(current, old_end),
+            new_end_point=point_at(updated, new_end),
+        )
+        tree = parser.parse(updated, tree)
+        fresh = parser.parse(updated)
+        if sexp(tree.root_node) != sexp(fresh.root_node):
+            replay = " ".join(f"{a}:{b}:{c.decode('utf-8', 'replace')!r}" for a, b, c in chain)
+            return [f"incremental != full after replacing {current[start:old_end]!r} "
+                    f"at byte {start} with {new!r}",
+                    f"replay from the original input: {replay}"], updated
+        current = updated
+    return [], current
+
+
+def linear_problems(parser):
+    base = open(os.path.join(ROOT, "test", "fixtures", "bundles", "acme_retail", "metrics",
+                             "gross-margin.md"), "rb").read()
+    body = base.split(b"\n---\n", 1)[1]
+    one = base + body * 40
+    two = base + body * 80
+
+    def timed(src):
+        best = float("inf")
+        for _ in range(5):
+            t = time.perf_counter()
+            parser.parse(src)
+            best = min(best, time.perf_counter() - t)
+        return best
+
+    t1, t2 = timed(one), timed(two)
+    ratio = t2 / t1 if t1 else 0
+    if ratio > LINEAR_BOUND:
+        return [f"2x input took {ratio:.2f}x as long (bound {LINEAR_BOUND})"], ratio
+    return [], ratio
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--seed", type=int, default=20260922)
+    ap.add_argument("--mutations", type=int, default=20, help="fuzz mutations per input")
+    ap.add_argument("--edits", type=int, default=10, help="random edits per incremental run")
+    ap.add_argument("-v", "--verbose", action="store_true")
+    ap.add_argument("--show", type=int, default=25, help="failures to print")
+    ap.add_argument("--dump", help="write each failing input to this directory")
+    args = ap.parse_args()
+
+    rng = random.Random(args.seed)
+    parser = tree_sitter.Parser(tree_sitter.Language(tree_sitter_okf.language()))
+    failures = []
+    counts = {"documents": 0, "fuzzed": 0, "incremental": 0}
+
+    def check(label, source, fuzzed=False):
+        tree = parser.parse(source)
+        problems = error_problems(tree) + coverage_problems(tree, source)
+        again = parser.parse(source)
+        if sexp(again.root_node) != sexp(tree.root_node):
+            problems.append("non-deterministic parse")
+        reparsed = parser.parse(source, tree)
+        if sexp(reparsed.root_node) != sexp(tree.root_node):
+            problems.append("re-parse with the old tree differs")
+        if problems:
+            failures.append((label, problems, source))
+        return tree
+
+    for label, source in inputs():
+        counts["documents"] += 1
+        tree = check(label, source)
+        # line endings and BOM
+        if b"\r" not in source:
+            crlf = source.replace(b"\n", b"\r\n")
+            crlf_tree = check(label + " [crlf]", crlf)
+            if shape(crlf_tree.root_node) != shape(tree.root_node):
+                failures.append((label + " [crlf]", ["CRLF changes the tree shape"], crlf))
+        bom = b"\xef\xbb\xbf" + source
+        bom_tree = check(label + " [bom]", bom)
+        if shape(bom_tree.root_node) != shape(tree.root_node):
+            failures.append((label + " [bom]", ["a BOM changes the tree shape"], bom))
+        # fuzz
+        for i in range(args.mutations):
+            counts["fuzzed"] += 1
+            check(f"{label} [mutation {i}]", mutate(rng, source), fuzzed=True)
+        # incremental
+        counts["incremental"] += 1
+        problems, final = incremental_problems(parser, rng, source, args.edits)
+        if problems:
+            # dump the ORIGINAL input: the replay chain applies to it
+            failures.append((label + " [incremental]", problems, source))
+
+    linear, ratio = linear_problems(parser)
+    if linear:
+        failures.append(("linear time", linear, b""))
+
+    if args.dump:
+        os.makedirs(args.dump, exist_ok=True)
+        for i, (label, problems, source) in enumerate(failures):
+            with open(os.path.join(args.dump, f"{i:03d}.md"), "wb") as f:
+                f.write(source)
+            with open(os.path.join(args.dump, f"{i:03d}.txt"), "w") as f:
+                f.write(label + "\n" + "\n".join(problems) + "\n")
+    for label, problems, source in failures[:args.show]:
+        print(f"  FAIL  {label}: {'; '.join(problems)}")
+        if args.verbose:
+            print("    input: " + repr(source[:400]))
+    if len(failures) > args.show:
+        print(f"  ... and {len(failures) - args.show} more")
+    print(f"{counts['documents']} documents (+ CRLF and BOM variants), {counts['fuzzed']} fuzzed "
+          f"inputs, {counts['incremental']} incremental runs of {args.edits} edits; "
+          f"2x/1x time {ratio:.2f}; {len(failures)} failures (seed {args.seed})")
+    return 1 if failures else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

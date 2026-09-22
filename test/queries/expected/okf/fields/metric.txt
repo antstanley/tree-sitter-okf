@@ -1,0 +1,18 @@
+1:0-1:12  @okf.field  'type: Metric'
+1:6-1:12  @okf.field.type  'Metric'
+2:0-2:19  @okf.field  'title: Gross Margin'
+2:7-2:19  @okf.field.title  'Gross Margin'
+3:0-3:155  @okf.field  "description: Gross margin for a period, per Acme's FY2026..."
+3:13-3:155  @okf.field.description  "Gross margin for a period, per Acme's FY2026 Cost Allocat..."
+4:0-4:40  @okf.field  'tags: [finance, margin, headline-metric]'
+4:6-4:40  @okf.field.tags  '[finance, margin, headline-metric]'
+5:0-5:75  @okf.field  'generated: { by: reference_agent/gemini-2.5-pro, at: 2026...'
+5:11-5:75  @okf.field.generated  '{ by: reference_agent/gemini-2.5-pro, at: 2026-06-30T14:0...'
+6:0-7:55  @okf.field  'verified:...'
+7:2-7:55  @okf.field.verified  '- { by: human:jsmith@acme, at: 2026-07-01T09:00:00Z }'
+8:0-8:14  @okf.field  'status: stable'
+8:8-8:14  @okf.field.status  'stable'
+9:0-9:33  @okf.field  'stale_after: 2026-12-31T00:00:00Z'
+9:13-9:33  @okf.field.stale_after  '2026-12-31T00:00:00Z'
+14:0-24:39  @okf.field  'sources:...'
+15:2-24:39  @okf.field.sources  '- id: margin-standard...'

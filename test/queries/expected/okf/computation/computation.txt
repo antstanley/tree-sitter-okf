@@ -1,0 +1,3 @@
+33:0-49:0  @okf.computation  '```sql...'
+33:3-33:6  @okf.computation.language  'sql'
+34:0-48:0  @okf.computation.code  'SELECT...'

@@ -1,0 +1,4 @@
+50:85-50:102  @okf.citation  '[^revenue-policy]'
+50:87-50:101  @okf.citation.reference  'revenue-policy'
+70:0-71:0  @okf.citation  '[^revenue-policy]: Revenue Recognition Policy (FY2026)...'
+70:2-70:16  @okf.citation.definition  'revenue-policy'

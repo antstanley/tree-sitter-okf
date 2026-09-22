@@ -1,0 +1,4 @@
+1:0-1:9  @okf.field  'type: Log'
+1:6-1:9  @okf.field.type  'Log'
+2:0-2:33  @okf.field  'title: Acme Retail bundle history'
+2:7-2:33  @okf.field.title  'Acme Retail bundle history'

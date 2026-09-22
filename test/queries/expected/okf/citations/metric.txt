@@ -1,0 +1,6 @@
+31:212-31:230  @okf.citation  '[^margin-standard]'
+31:214-31:229  @okf.citation.reference  'margin-standard'
+50:0-51:0  @okf.citation  '[^margin-standard]: Cost Allocation & Margin Standard (FY...'
+50:2-50:17  @okf.citation.definition  'margin-standard'
+51:0-52:0  @okf.citation  '[^revenue-policy]: Revenue Recognition Policy (FY2026)...'
+51:2-51:16  @okf.citation.definition  'revenue-policy'

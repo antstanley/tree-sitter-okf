@@ -1,0 +1,2 @@
+41:0-44:0  @okf.computation  '    SELECT SUM(amount)...'
+41:0-44:0  @okf.computation.code  '    SELECT SUM(amount)...'

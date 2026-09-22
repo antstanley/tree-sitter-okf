@@ -106,8 +106,11 @@ const rules = {
 
   /** A scalar or flow node that stands alone as a block's content. */
   _fm_line_node: ($) => prec.right(seq(
-    optional($._fm_properties),
-    choice($._fm_inline_node, $.block_scalar),
+    choice(
+      seq(optional($._fm_properties), choice($._fm_inline_node, $.block_scalar)),
+      $._fm_properties, // an empty node with an anchor or tag
+      seq($._fm_properties, $.yaml_unsupported),
+    ),
     repeat(seq($._fm_newline, $.yaml_unsupported)),
   )),
 
@@ -143,7 +146,7 @@ const rules = {
     seq(optional($._fm_properties), $._fm_indent, field('value', $._fm_content), $._fm_dedent),
     seq(optional($._fm_properties), $._fm_sequence_newline, field('value', $.block_sequence), $._fm_dedent),
     $._fm_properties,
-    field('value', $.yaml_unsupported),
+    seq(optional($._fm_properties), field('value', $.yaml_unsupported)),
   ),
 
   // --- block sequences -----------------------------------------------------
@@ -166,7 +169,7 @@ const rules = {
     $._fm_properties,
     alias($._fm_compact_mapping, $.block_mapping),
     alias($._fm_compact_sequence, $.block_sequence),
-    $.yaml_unsupported,
+    seq(optional($._fm_properties), $.yaml_unsupported),
   ),
 
   /** `- key: value` and its sibling lines, closed by an `_fm_dedent`. */

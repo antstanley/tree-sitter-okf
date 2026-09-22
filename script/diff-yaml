@@ -1,0 +1,318 @@
+#!/usr/bin/env python3
+"""Differential test: OKF-YAML frontmatter values vs. a reference YAML parser.
+
+Spec §9.4(1) and the M1 exit criterion.  For every frontmatter block in the
+fixture bundles and in test/corpus, the value tree is rebuilt from OUR parse
+tree (unquoting and folding scalars the way a host would) and compared with
+PyYAML's BaseLoader, which, like OKF-YAML, never resolves scalar types.  The
+comparison catches wrong spans and wrong structure: a folded plain scalar cut
+short, a block scalar that swallows its sibling, a zero-indented sequence
+attached to the wrong key.
+
+Documents whose frontmatter contains `yaml_unsupported` are skipped: by
+design (spec §5.1) they are not claimed to mean anything.
+
+Usage: script/diff-yaml [-v]
+Needs the Python binding and PyYAML.
+"""
+
+import argparse
+import os
+import re
+import sys
+
+import tree_sitter
+import tree_sitter_okf
+import yaml
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+ESCAPES = {
+    "0": "\0", "a": "\a", "b": "\b", "t": "\t", "\t": "\t", "n": "\n", "v": "\v",
+    "f": "\f", "r": "\r", "e": "\x1b", " ": " ", '"': '"', "/": "/", "\\": "\\",
+    "N": "\x85", "_": "\xa0", "L": " ", "P": " ",
+}
+
+
+class Unsupported(Exception):
+    pass
+
+
+def fold_flow(text):
+    """YAML flow folding for plain and quoted scalars: trim each line, a single
+    line break becomes a space, each empty line becomes a newline."""
+    lines = text.split("\n")
+    if len(lines) == 1:
+        return text
+    out = lines[0].rstrip(" \t")
+    empties = 0
+    for line in lines[1:]:
+        stripped = line.strip(" \t")
+        if stripped == "":
+            empties += 1
+            continue
+        out += ("\n" * empties) if empties else " "
+        out += stripped
+        empties = 0
+    return out + ("\n" * empties if empties else "")
+
+
+def plain_value(text):
+    return fold_flow(text)
+
+
+def single_quoted_value(text):
+    return fold_flow(text[1:-1]).replace("''", "'")
+
+
+def double_quoted_value(text):
+    body = text[1:-1]
+    if re.search(r"\\\r?\n", body):
+        raise Unsupported("escaped line break")
+    # Fold first (escaped characters are not whitespace), then unescape.
+    out = []
+    folded = fold_flow(body.replace("\\\\", "\0\0"))
+    folded = folded.replace("\0\0", "\\\\")
+    i = 0
+    while i < len(folded):
+        c = folded[i]
+        if c == "\\" and i + 1 < len(folded):
+            n = folded[i + 1]
+            if n in ESCAPES:
+                out.append(ESCAPES[n])
+                i += 2
+                continue
+            width = {"x": 2, "u": 4, "U": 8}.get(n)
+            if width:
+                out.append(chr(int(folded[i + 2:i + 2 + width], 16)))
+                i += 2 + width
+                continue
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
+def block_scalar_value(node, source):
+    text = source[node.start_byte:node.end_byte].decode("utf-8")
+    header, _, body = text.partition("\n")
+    style = header[0]
+    indicators = header[1:].split("#")[0].strip()
+    chomp = "-" if "-" in indicators else "+" if "+" in indicators else ""
+    digits = [c for c in indicators if c.isdigit()]
+    lines = body.split("\n") if body else []
+    if digits:
+        # relative to the parent node's indentation
+        parent_indent = parent_indentation(node, source)
+        indent = parent_indent + int(digits[0])
+    else:
+        indent = min((len(l) - len(l.lstrip(" ")) for l in lines if l.strip()), default=0)
+    content = [l[indent:] if l.strip() else "" for l in lines]
+    # Trailing blank lines are not part of our token: count them from the
+    # source, they matter for `keep` chomping.
+    rest = source[node.end_byte:].decode("utf-8")
+    trailing = 0
+    for line in rest.split("\n")[1:]:
+        if line.strip() == "":
+            trailing += 1
+        else:
+            break
+    if style == "|":
+        value = "\n".join(content)
+    else:
+        value = fold_block(content)
+    if chomp == "-":
+        return value.rstrip("\n")
+    if chomp == "+":
+        return value + "\n" + "\n" * trailing if value else "\n" * trailing
+    return value + "\n" if value else ""
+
+
+def fold_block(lines):
+    """Folded block scalar: lines joined by spaces, except around empty and
+    more-indented lines."""
+    out = ""
+    prev_normal = False
+    empties = 0
+    for i, line in enumerate(lines):
+        if line == "":
+            empties += 1
+            continue
+        more_indented = line[:1] in (" ", "\t")
+        if i and out != "" or empties:
+            if prev_normal and not more_indented and empties == 0:
+                out += " "
+            elif prev_normal and not more_indented:
+                out += "\n" * empties
+            else:
+                out += "\n" * (empties + 1) if out != "" else "\n" * empties
+        out += line
+        prev_normal = not more_indented
+        empties = 0
+    return out
+
+
+def parent_indentation(node, source):
+    line_start = source.rfind(b"\n", 0, node.start_byte) + 1
+    line = source[line_start:node.start_byte].decode("utf-8")
+    return len(line) - len(line.lstrip(" "))
+
+
+def named(node):
+    return [c for c in node.children if c.is_named and c.type != "comment"
+            and c.type not in ("yaml_directive", "yaml_document_end")]
+
+
+class Builder:
+    def __init__(self, source):
+        self.source = source
+        self.anchors = {}
+
+    def text(self, node):
+        return self.source[node.start_byte:node.end_byte].decode("utf-8")
+
+    def value(self, nodes):
+        """The value of a node sequence: properties then at most one node."""
+        anchor = None
+        result = None
+        seen = False
+        for n in nodes:
+            if n.type == "anchor":
+                anchor = self.text(n)[1:]
+            elif n.type == "tag":
+                continue
+            else:
+                result = self.node(n)
+                seen = True
+        if not seen:
+            result = ""  # BaseLoader's null
+        if anchor is not None:
+            self.anchors[anchor] = result
+        return result
+
+    def node(self, n):
+        t = n.type
+        if t == "yaml_unsupported" or n.has_error:
+            raise Unsupported(t)
+        if t == "plain_scalar":
+            return plain_value(self.text(n))
+        if t == "single_quote_scalar":
+            return single_quoted_value(self.text(n))
+        if t == "double_quote_scalar":
+            return double_quoted_value(self.text(n))
+        if t == "block_scalar":
+            return block_scalar_value(n, self.source)
+        if t == "alias":
+            return self.anchors.get(self.text(n)[1:])
+        if t == "block_mapping":
+            out = {}
+            for pair in named(n):
+                if pair.type != "block_mapping_pair":
+                    raise Unsupported(pair.type)
+                key = self.node(pair.child_by_field_name("key"))
+                rest = [c for c in named(pair) if c.id != pair.child_by_field_name("key").id]
+                props = [c for c in rest if c.type in ("anchor", "tag")]
+                value = pair.child_by_field_name("value")
+                out[key] = self.value(props + ([value] if value is not None else []))
+            return out
+        if t == "block_sequence":
+            return [self.value(named(item)) for item in named(n)]
+        if t == "flow_mapping":
+            out = {}
+            for entry in named(n):
+                if entry.type == "flow_pair":
+                    key = self.node(entry.child_by_field_name("key"))
+                    value = entry.child_by_field_name("value")
+                    out[key] = self.node(value) if value is not None else ""
+                elif entry.type not in ("anchor", "tag"):
+                    out[self.node(entry)] = ""
+            return out
+        if t == "flow_sequence":
+            out = []
+            pending = []
+            for entry in named(n):
+                if entry.type in ("anchor", "tag"):
+                    pending.append(entry)
+                    continue
+                if entry.type == "flow_pair":
+                    key = self.node(entry.child_by_field_name("key"))
+                    value = entry.child_by_field_name("value")
+                    out.append({key: self.node(value) if value is not None else ""})
+                else:
+                    out.append(self.value(pending + [entry]))
+                pending = []
+            return out
+        raise Unsupported(t)
+
+
+def frontmatter_documents():
+    fixtures = os.path.join(ROOT, "test", "fixtures", "bundles")
+    for dirpath, _, names in os.walk(fixtures):
+        for name in sorted(names):
+            if name.endswith(".md") and name != "LICENSE.md":
+                path = os.path.join(dirpath, name)
+                yield os.path.relpath(path, ROOT), open(path, "rb").read()
+    corpus = os.path.join(ROOT, "test", "corpus")
+    header = re.compile(r"^(={3,})\n(.*?)\n\1\n", re.M | re.S)
+    for dirpath, _, names in os.walk(corpus):
+        for name in sorted(names):
+            text = open(os.path.join(dirpath, name), encoding="utf-8").read()
+            hs = list(header.finditer(text))
+            for i, m in enumerate(hs):
+                end = hs[i + 1].start() if i + 1 < len(hs) else len(text)
+                body = text[m.end():end]
+                dashes = list(re.finditer(r"^-{3,}\n", body, re.M))
+                if not dashes:
+                    continue
+                source = body[: dashes[-1].start()]
+                if source.endswith("\n"):
+                    source = source[:-1]
+                if source.startswith("---\n"):
+                    rel = os.path.relpath(os.path.join(dirpath, name), ROOT)
+                    yield f"{rel}: {m.group(2).splitlines()[0]}", source.encode("utf-8")
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("-v", "--verbose", action="store_true")
+    args = ap.parse_args()
+    parser = tree_sitter.Parser(tree_sitter.Language(tree_sitter_okf.language()))
+    compared = skipped = failed = 0
+    for label, source in frontmatter_documents():
+        tree = parser.parse(source)
+        fm = tree.root_node.child_by_field_name("frontmatter")
+        if fm is None:
+            continue
+        close = [c for c in fm.children if c.type == "---"]
+        if len(close) < 2 or close[-1].is_missing:
+            skipped += 1
+            continue
+        yaml_text = source[close[0].end_byte:close[-1].start_byte].decode("utf-8")
+        try:
+            content = named(fm)
+            ours = Builder(source).value(content) if content else None
+            if ours == "":
+                ours = None
+        except Unsupported:
+            skipped += 1
+            continue
+        try:
+            reference = yaml.load(yaml_text, Loader=yaml.BaseLoader)
+        except yaml.YAMLError as e:
+            if args.verbose:
+                print(f"  reference parser rejects {label}: {str(e).splitlines()[0]}")
+            skipped += 1
+            continue
+        compared += 1
+        if ours != reference:
+            failed += 1
+            print(f"  DIFF  {label}")
+            if args.verbose:
+                print(f"    ours:      {ours!r}")
+                print(f"    reference: {reference!r}")
+    print(f"{compared} frontmatter blocks compared with PyYAML, {failed} differing, "
+          f"{skipped} skipped (unsupported, unterminated or rejected by the reference)")
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

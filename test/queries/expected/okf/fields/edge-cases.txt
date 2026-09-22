@@ -1,0 +1,16 @@
+1:0-1:14  @okf.field  '"type": Metric'
+1:8-1:14  @okf.field.type  'Metric'
+2:0-2:19  @okf.field  "'title': Edge Cases"
+2:9-2:19  @okf.field.title  'Edge Cases'
+3:0-5:23  @okf.field  'description: >-...'
+3:13-5:23  @okf.field.description  '>-...'
+6:0-6:25  @okf.field  'tags: [queries, fixtures]'
+6:6-6:25  @okf.field.tags  '[queries, fixtures]'
+7:0-7:18  @okf.field  'okf_version: "0.2"'
+7:13-7:18  @okf.field.okf_version  '"0.2"'
+13:0-13:33  @okf.field  'stale_after: 2026-12-31T00:00:00Z'
+13:13-13:33  @okf.field.stale_after  '2026-12-31T00:00:00Z'
+14:0-14:57  @okf.field  "generated: { by: agent, at: '2026-06-30T14:00:00+00:00' }"
+14:11-14:57  @okf.field.generated  "{ by: agent, at: '2026-06-30T14:00:00+00:00' }"
+15:0-18:84  @okf.field  'sources:...'
+16:0-18:84  @okf.field.sources  '- id: flow-source...'

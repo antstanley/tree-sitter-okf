@@ -1,0 +1,7 @@
+8:13-8:17  @okf.scalar.integer  '1240'
+9:7-9:11  @okf.scalar.float  '0.25'
+10:9-10:13  @okf.scalar.boolean  'true'
+12:9-12:10  @okf.scalar.null  '~'
+13:13-13:33  @okf.scalar.timestamp  '2026-12-31T00:00:00Z'
+14:28-14:55  @okf.scalar.timestamp  "'2026-06-30T14:00:00+00:00'"
+18:81-18:82  @okf.scalar.integer  '3'

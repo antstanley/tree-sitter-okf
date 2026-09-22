@@ -1,0 +1,8 @@
+29:101-29:125  @okf.link  './gross-margin-legacy.md'
+29:101-29:125  @okf.link.relative  './gross-margin-legacy.md'
+31:54-31:66  @okf.link  './revenue.md'
+31:54-31:66  @okf.link.relative  './revenue.md'
+37:70-37:108  @okf.link  '../computations/gross-margin-period.md'
+37:70-37:108  @okf.link.relative  '../computations/gross-margin-period.md'
+41:205-41:229  @okf.link  './gross-margin-legacy.md'
+41:205-41:229  @okf.link.relative  './gross-margin-legacy.md'
