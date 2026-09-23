@@ -5,7 +5,8 @@ A [tree-sitter](https://tree-sitter.github.io/) grammar for
 v0.2 documents: markdown with YAML frontmatter, organised into knowledge
 bundles.
 
-**Status: 1.0.0.** It implements the whole
+**Status: 0.2.0.** The version follows OKF: 0.2.x targets OKF v0.2 (see
+[`docs/releasing.md`](docs/releasing.md)). It implements the whole
 [grammar specification](docs/grammar-spec.md) (milestones M0–M5). See
 [`CHANGELOG.md`](CHANGELOG.md) for what is verified and the known
 limitations.

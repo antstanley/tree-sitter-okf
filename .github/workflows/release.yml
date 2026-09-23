@@ -4,9 +4,10 @@ name: Release
 # registry token exists anywhere: each publish job exchanges this workflow's
 # GitHub OIDC token for a short-lived credential.
 #
-#   git tag v1.2.3 && git push origin v1.2.3
+#   git tag v0.2.1 && git push origin v0.2.1
 #
-# 1. validate:  the tag matches the version in every manifest
+# 1. validate:  the tag matches the version in every manifest, and
+#               MAJOR.MINOR is the OKF version (docs/releasing.md)
 # 2. ci:        the full CI workflow (tests, every binding) on the tagged commit
 # 3. build-*:   the npm tarball, the Python sdist and abi3 wheels, built in
 #               jobs that cannot publish (CI already packages the crate)

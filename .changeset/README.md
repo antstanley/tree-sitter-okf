@@ -1,11 +1,14 @@
 # Changesets
 
-Every user-facing change ships with a changeset: run `npx changeset`, pick
-the semver impact, and write a one-line summary. It becomes the CHANGELOG
-entry. Node types, fields and query captures are API (spec P7): renaming or
-removing one is **major**, adding one is **minor**, and a parse fix that
-leaves the node inventory unchanged is **patch**. A major changeset must
-include a node-rename table.
+Every user-facing change ships with a changeset: run `npx changeset`, choose
+**patch**, and write a one-line summary. It becomes the CHANGELOG entry.
+
+The version follows OKF: MAJOR.MINOR is the OKF version the grammar targets
+(`okfVersion` in `package.json`), so a **minor** (or **major**) changeset is
+only for supporting a new OKF version, together with updating `okfVersion`.
+`script/check-versions.js` rejects anything else. Node types, fields and
+query captures are API (spec P7): within one OKF version they are only
+added. See `docs/releasing.md`.
 
 Accumulated changesets are consumed by the "Version packages" PR that
 `.github/workflows/version-pr.yml` maintains. Merging it bumps the version

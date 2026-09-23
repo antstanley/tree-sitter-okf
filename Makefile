@@ -4,7 +4,7 @@ endif
 
 LANGUAGE_NAME := tree-sitter-okf
 HOMEPAGE_URL := https://github.com/antstanley/tree-sitter-okf
-VERSION := 1.0.0
+VERSION := 0.2.0
 
 # repository
 SRC_DIR := src

@@ -4,8 +4,9 @@
      edit the table in script/node-types and run it.  CI runs it with --check. -->
 
 The public API of the grammar: every named node, its fields, and where its
-name comes from.  Node and field names follow semantic versioning (spec P7):
-renaming one is a breaking release.
+name comes from.  Node and field names are API (spec P7): within one OKF
+version (one MAJOR.MINOR, see docs/releasing.md) they are only added, never
+renamed or removed.
 
 Names are reused from [tree-sitter-markdown] and [tree-sitter-yaml] wherever a
 construct corresponds (spec D10), so queries written for those grammars mostly

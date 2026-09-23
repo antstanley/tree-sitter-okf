@@ -1,6 +1,7 @@
 {
   "name": "tree-sitter-okf",
-  "version": "1.0.0",
+  "version": "0.2.0",
+  "okfVersion": "0.2",
   "description": "Open Knowledge Format (OKF) grammar for tree-sitter",
   "repository": {
     "type": "git",

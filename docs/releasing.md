@@ -2,18 +2,27 @@
 
 ## Versioning
 
-The parser follows [semantic versioning](https://semver.org/). Public node
-types, fields and query captures are API (spec P7):
+The version follows OKF: **MAJOR.MINOR is the OKF version the grammar
+targets, and PATCH counts releases for that OKF version.** 0.2.x targets
+OKF v0.2. When OKF v0.3 is published and the grammar supports it, the next
+release is 0.3.0.
 
 | Change | Bump |
 |---|---|
-| Rename or remove a node type, field or query capture | **major**, with a node-rename table in the changeset |
-| Add a node type, field or capture; move a construct out of `yaml_unsupported` into the OKF-YAML subset | **minor** |
-| A parse fix that leaves the node inventory unchanged; docs; helpers | **patch** |
+| Support for a new OKF version (set `okfVersion` in `package.json` too) | **minor** (or **major**, following OKF) |
+| Anything else: parse fixes, new nodes, query and helper changes, docs | **patch** |
 
-Each release also records the OKF version it targets and the query-library
-version (`queries/okf/`, which follows the OKF version) in its CHANGELOG
-entry.
+`script/check-versions.js` enforces the rule: MAJOR.MINOR must equal
+`okfVersion` in `package.json`. The version-PR workflow and the release both
+fail on a `minor` changeset that doesn't come with a new OKF version.
+
+Node types, fields and query captures are still API (spec P7). Within one
+OKF version they are only added, never renamed or removed. A change that
+must rename or remove one waits for the next OKF version, and its CHANGELOG
+entry carries a node-rename table.
+
+The query library (`queries/okf/`) versions with OKF as well, so its version
+is the same number as the parser's.
 
 One version number covers every package: npm, crates.io and PyPI publish the
 same version, and Go and Swift consumers use the matching `vX.Y.Z` tag. It
@@ -25,7 +34,7 @@ the release workflow) fails if they disagree.
 ## Day to day
 
 1. **Every user-facing change comes with a changeset.** Run `npx changeset`,
-   choose the bump, and write the CHANGELOG line. Commit the generated
+   choose **patch** (see above), and write the CHANGELOG line. Commit the generated
    `.changeset/*.md` with the change.
 2. **The "Release: version packages" PR** is kept up to date by
    `.github/workflows/version-pr.yml` on every push to `main`. It runs
@@ -39,8 +48,8 @@ the release workflow) fails if they disagree.
 
    ```sh
    git pull
-   git tag v1.2.3
-   git push origin v1.2.3
+   git tag v0.2.1
+   git push origin v0.2.1
    ```
 
 5. `.github/workflows/release.yml` then does the following:
@@ -82,7 +91,7 @@ npm, so the first version is published by hand:
 
 ```sh
 npm login
-npm publish --access public            # from a clean checkout of main at 1.0.0
+npm publish --access public            # from a clean checkout of main at 0.2.0
 npm trust github tree-sitter-okf \
   --repo antstanley/tree-sitter-okf \
   --file release.yml \
@@ -102,7 +111,7 @@ be configured:
 
 ```sh
 cargo login                            # a temporary API token
-cargo publish                          # from a clean checkout of main at 1.0.0
+cargo publish                          # from a clean checkout of main at 0.2.0
 ```
 
 Then, in the crate's settings on crates.io, add a trusted publisher with
@@ -124,16 +133,16 @@ PyPI can create a project on its first trusted publish. On PyPI, open
 
 The first tagged release then creates the project.
 
-### First release (1.0.0)
+### First release (0.2.0)
 
 Do the steps in this order. The tag must come last, or the npm and crates.io
 jobs fail for lack of a trusted publisher.
 
 1. Create the `publish` environment and the PyPI pending publisher.
-2. Publish 1.0.0 to npm and crates.io by hand, as above, and add their
+2. Publish 0.2.0 to npm and crates.io by hand, as above, and add their
    trusted publishers.
-3. Push the tag: `git tag v1.0.0 <commit> && git push origin v1.0.0`. The
-   workflow skips npm and crates.io (1.0.0 is already there), creates the
+3. Push the tag: `git tag v0.2.0 <commit> && git push origin v0.2.0`. The
+   workflow skips npm and crates.io (0.2.0 is already there), creates the
    PyPI project, and cuts the GitHub Release.
 
 ### Go and Swift

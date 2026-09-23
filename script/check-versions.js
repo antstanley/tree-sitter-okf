@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 /**
- * Check that every manifest carries the same version (spec §10.3).
+ * Check that every manifest carries the same version (spec §10.3), and that
+ * the version follows OKF (docs/releasing.md).
  *
  * The version lives in eight files; script/version-packages keeps them in
  * step.  This fails if any disagree with package.json, or, given a tag
- * (`v1.2.3` or `1.2.3`), with that tag: the release workflow runs it so a tag
- * can never publish a mismatched set.
+ * (`v0.2.1` or `0.2.1`), with that tag: the release workflow runs it so a tag
+ * can never publish a mismatched set.  MAJOR.MINOR must equal the OKF
+ * version the grammar targets (`okfVersion` in package.json), so a stray
+ * `minor` changeset cannot claim a new OKF version.
  *
  * Usage: node script/check-versions.js [TAG]
  */
@@ -47,10 +50,17 @@ for (const [file, version] of Object.entries(found)) {
     failed = true;
   }
 }
+const okf = pkg.okfVersion;
+const [major, minor] = expected.split('.');
+if (`${major}.${minor}` !== okf) {
+  console.error(`version ${expected} does not follow OKF ${okf}: MAJOR.MINOR must be ${okf} ` +
+    '(only a new OKF version moves them; everything else is a patch)');
+  failed = true;
+}
 if (failed) {
   console.error(tag
     ? `manifests do not match tag ${tag}`
     : 'manifests disagree: run `npx tree-sitter version <version>`');
   process.exit(1);
 }
-console.log(`all ${Object.keys(found).length} manifests at ${expected}`);
+console.log(`all ${Object.keys(found).length} manifests at ${expected} (OKF ${okf})`);

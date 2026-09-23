@@ -17,4 +17,7 @@ version=$(node -p "require('./package.json').version")
 # none)
 if command -v cargo >/dev/null 2>&1; then cargo fetch --quiet; fi
 npx tree-sitter version "$version"
+# MAJOR.MINOR must still be the OKF version: a `minor` or `major` changeset
+# is only right when okfVersion in package.json moved too
+node script/check-versions.js
 echo "versioned packages at $version"

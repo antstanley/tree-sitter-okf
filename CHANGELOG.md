@@ -1,11 +1,12 @@
 # tree-sitter-okf
 
-## 1.0.0
+## 0.2.0
 
-Released 2026-09-22 · parser **1.0.0** · OKF **0.2** (spec @ `ad30107`) · query library **0.2.0** ·
+parser **0.2.0** · OKF **0.2** (spec @ `ad30107`) · query library **0.2.0** ·
 tree-sitter ABI **14** (generated with tree-sitter CLI 0.25)
 
-First release. It implements `docs/grammar-spec.md` milestones M0–M5.
+First release. It implements `docs/grammar-spec.md` milestones M0–M5. The
+version follows OKF: 0.2.x targets OKF v0.2 (see `docs/releasing.md`).
 
 ### Grammar
 
@@ -41,13 +42,20 @@ agreement.
 
 ### Verification
 
-* 151 corpus cases.
+* 158 corpus cases.
 * 646 of 651 upstream tree-sitter-markdown cases give identical trees. The
   other 5 are recorded divergences.
-* Frontmatter scalar values match PyYAML on 113 blocks.
-* 48 query fixtures and 18 host-helper cases.
+* Frontmatter scalar values match PyYAML on 117 blocks.
+* 48 query fixtures and 24 host-helper cases.
 * A property suite checks: no `ERROR` on fuzzed inputs, lossless leaves,
   incremental parse equals full parse, CRLF/BOM variants, and linear time.
+* Pathological inputs (frontmatter nested past the 48-level limit, long
+  unclosed `*`/`_`/`~` runs) stay `ERROR`-free and linear.
+* A semi-formal code review before release found 12 defects, all fixed:
+  mis-nesting after anchors and tags, indented `%` lines, the nesting limit,
+  tab columns and an indented root in frontmatter; quadratic unclosed
+  delimiter runs; escape, CRLF, time-zone and prototype-key handling in the
+  host helpers; and two release-workflow risks.
 * Benchmark (Apple M-series): about 3,600 fixture files/s. A 100 KB document
   parses in about 18 ms. A one-character edit re-parses in under 1 ms on
   every fixture document.
